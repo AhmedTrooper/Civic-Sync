@@ -305,7 +305,13 @@ pub(crate) async fn heuristic_dispatch(
     let now = Utc::now();
 
     for incident in ranked {
-        let primary = nearest_center(&centers, incident.latitude, incident.longitude);
+        let primary = nearest_center(
+            state.redis.as_ref(),
+            &centers,
+            incident.latitude,
+            incident.longitude,
+        )
+        .await;
 
         // 1) Resource selection per kind (data.md §5A primary → Dhaka fallback).
         let mut allocations: Vec<AllocationEntry> = Vec::new();
@@ -536,8 +542,13 @@ pub(crate) async fn heuristic_dispatch(
 
 // --- helpers ----------------------------------------------------------------
 
-fn nearest_center(centers: &[CommandCenter], lat: f64, lon: f64) -> &CommandCenter {
-    let cached_id = crate::cache::nearest_center(centers, lat, lon);
+async fn nearest_center<'a>(
+    redis: Option<&redis::Client>,
+    centers: &'a [CommandCenter],
+    lat: f64,
+    lon: f64,
+) -> &'a CommandCenter {
+    let cached_id = crate::cache::nearest_center(redis, centers, lat, lon).await;
     if cached_id.is_nil() {
         return centers
             .iter()

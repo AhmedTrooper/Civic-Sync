@@ -23,6 +23,7 @@ pub struct AppState {
     pub helper_teams: Arc<RwLock<HashMap<Uuid, HelperTeam>>>,
     pub assistance_requests: Arc<RwLock<HashMap<Uuid, AssistanceRequest>>>,
     pub helper_allocations: Arc<RwLock<HashMap<Uuid, HelperAllocation>>>,
+    pub redis: Option<redis::Client>,
     /// Optional AI orchestrator. `None` when `AiConfig::is_configured()` is
     /// false, i.e. the operator did not wire up an LLM. When `None`, the
     /// dispatch handler runs the deterministic heuristic on every call and
@@ -64,9 +65,20 @@ impl AppState {
         let (triggers_tx, _triggers_rx) = crate::features::triggers::channel();
         let (flush_tx, _flush_rx) = mpsc::channel(crate::features::flush::MARK_CHANNEL_CAPACITY);
         let (flush_notice_tx, _) = broadcast::channel(64);
+
+        let redis = config.redis_url.as_ref().and_then(|url| {
+            redis::Client::open(url.as_str())
+                .map_err(|e| {
+                    tracing::warn!("Failed to initialize Redis client: {}", e);
+                    e
+                })
+                .ok()
+        });
+
         Self {
             config,
             database,
+            redis,
             incidents: Arc::new(RwLock::new(HashMap::new())),
             resources: Arc::new(RwLock::new(HashMap::new())),
             command_centers: Arc::new(RwLock::new(command_centers)),
