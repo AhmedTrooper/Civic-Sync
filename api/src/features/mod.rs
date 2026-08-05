@@ -7,3 +7,4 @@ pub mod helper_teams;
 pub mod incidents;
 pub mod orchestrator;
 pub mod resources;
+pub mod triggers;

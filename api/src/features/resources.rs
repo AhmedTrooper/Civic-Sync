@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, state::AppState};
+use crate::{error::ApiError, features::triggers::TriggerEvent, state::AppState};
 
 /// Vehicles & physical supplies tracked by the network.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -166,7 +166,7 @@ pub async fn update_status(
     Json(update): Json<UpdateStatus>,
 ) -> Result<Json<Resource>, ApiError> {
     match &state.database {
-        Some(pool) => update_status_postgres(pool, id, update).await,
+        Some(pool) => update_status_postgres(pool, &state, id, update).await,
         None => update_status_in_memory(&state, id, update).await,
     }
 }
@@ -214,6 +214,7 @@ async fn update_status_in_memory(
 ) -> Result<Json<Resource>, ApiError> {
     let mut resources = state.resources.write().await;
     let resource = resources.get_mut(&id).ok_or(ApiError::NotFound)?;
+    let previous_status = resource.status;
     resource.status = update.status;
     resource.incident_id = update.incident_id;
     if let Some(passed) = update.distance_passed_km {
@@ -223,7 +224,10 @@ async fn update_status_in_memory(
         resource.distance_remaining_km = remaining;
     }
     resource.updated_at = Utc::now();
-    Ok(Json(resource.clone()))
+    let snapshot = resource.clone();
+    drop(resources);
+    fire_status_hook(state, id, previous_status, snapshot.status);
+    Ok(Json(snapshot))
 }
 
 pub(crate) async fn insert_postgres(
@@ -316,6 +320,7 @@ pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<Resourc
 
 async fn update_status_postgres(
     pool: &sqlx::PgPool,
+    state: &AppState,
     id: Uuid,
     update: UpdateStatus,
 ) -> Result<Json<Resource>, ApiError> {
@@ -334,6 +339,7 @@ async fn update_status_postgres(
     .ok_or(ApiError::NotFound)?;
 
     let resource: Resource = Resource::from(existing);
+    let previous_status = resource.status;
     drop(resource); // transitioned freely per data.md §6.4 (no transition rules specified).
 
     let now = Utc::now();
@@ -367,7 +373,28 @@ async fn update_status_postgres(
     .bind(id)
     .fetch_one(pool)
     .await?;
-    Ok(Json(Resource::from(row)))
+    let updated = Resource::from(row);
+    fire_status_hook(state, id, previous_status, updated.status);
+    Ok(Json(updated))
+}
+
+/// Fire the append-only trigger channel when a resource transitions to
+/// `Stuck`. The signal is a hint to the triggers driver; the 30-second tick
+/// is the authoritative re-evaluation point so dropping the send is safe.
+fn fire_status_hook(state: &AppState, id: Uuid, previous: ResourceStatus, current: ResourceStatus) {
+    if previous == current || current != ResourceStatus::Stuck {
+        return;
+    }
+    let sender = state.triggers_tx.clone();
+    tokio::spawn(async move {
+        if let Err(error) = sender.send(TriggerEvent::ResourceStuck(id)).await {
+            tracing::warn!(
+                error = %error,
+                resource_id = %id,
+                "failed to enqueue STUCK trigger; driver may have shut down"
+            );
+        }
+    });
 }
 
 #[derive(sqlx::FromRow)]

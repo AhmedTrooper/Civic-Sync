@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use sqlx::PgPool;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     features::{
         assistance_requests::AssistanceRequest, command_centers::CommandCenter,
         helper_allocations::HelperAllocation, helper_teams::HelperTeam, incidents::Incident,
-        resources::Resource,
+        orchestrator::Orchestrator, resources::Resource, triggers::TriggerEvent,
     },
 };
 
@@ -23,6 +23,15 @@ pub struct AppState {
     pub helper_teams: Arc<RwLock<HashMap<Uuid, HelperTeam>>>,
     pub assistance_requests: Arc<RwLock<HashMap<Uuid, AssistanceRequest>>>,
     pub helper_allocations: Arc<RwLock<HashMap<Uuid, HelperAllocation>>>,
+    /// Optional AI orchestrator. `None` when `AiConfig::is_configured()` is
+    /// false, i.e. the operator did not wire up an LLM. When `None`, the
+    /// dispatch handler runs the deterministic heuristic on every call and
+    /// the triggers driver operates in heuristic-only mode.
+    pub orchestrator: Arc<Option<Orchestrator>>,
+    /// Sender for delta-trigger events (data.md §5B). Resource status
+    /// updates push `TriggerEvent::ResourceStuck` etc. here, and the
+    /// triggers driver drains the receiver on its 30-second ticker.
+    pub triggers_tx: mpsc::Sender<TriggerEvent>,
 }
 
 impl AppState {
@@ -39,6 +48,8 @@ impl AppState {
             .into_iter()
             .map(|center| (center.id, center))
             .collect::<HashMap<_, _>>();
+        let orchestrator = Arc::new(Orchestrator::from_config(&config.ai).ok().flatten());
+        let (triggers_tx, _triggers_rx) = crate::features::triggers::channel();
         Self {
             config,
             database,
@@ -48,6 +59,8 @@ impl AppState {
             helper_teams: Arc::new(RwLock::new(HashMap::new())),
             assistance_requests: Arc::new(RwLock::new(HashMap::new())),
             helper_allocations: Arc::new(RwLock::new(HashMap::new())),
+            orchestrator,
+            triggers_tx,
         }
     }
 }

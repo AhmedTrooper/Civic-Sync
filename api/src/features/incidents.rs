@@ -116,7 +116,46 @@ pub async fn create(
             .await
             .insert(incident.id, incident.clone());
     }
+    fire_incident_triggers(&state, &incident);
     Ok((StatusCode::CREATED, Json(incident)))
+}
+
+/// Emit `TriggerEvent::NewSeverityFiveIncident` and/or
+/// `TriggerEvent::NewMassCasualtyIncident` per data.md §5B trigger
+/// conditions. Each signal is fire-and-forget; the 30s ticker is the
+/// authoritative re-evaluation point.
+fn fire_incident_triggers(state: &AppState, incident: &Incident) {
+    let sender = state.triggers_tx.clone();
+    let id = incident.id;
+    let severity_five = incident.severity_level == 5;
+    let mass_casualty = incident.casualty_count >= 10;
+    if !severity_five && !mass_casualty {
+        return;
+    }
+    tokio::spawn(async move {
+        if severity_five
+            && let Err(error) = sender
+                .send(crate::features::triggers::TriggerEvent::NewSeverityFiveIncident(id))
+                .await
+        {
+            tracing::warn!(
+                error = %error,
+                incident_id = %id,
+                "failed to enqueue severity-five trigger"
+            );
+        }
+        if mass_casualty
+            && let Err(error) = sender
+                .send(crate::features::triggers::TriggerEvent::NewMassCasualtyIncident(id))
+                .await
+        {
+            tracing::warn!(
+                error = %error,
+                incident_id = %id,
+                "failed to enqueue mass-casualty trigger"
+            );
+        }
+    });
 }
 
 pub async fn list(

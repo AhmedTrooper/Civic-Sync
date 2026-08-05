@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use civic_sync_api::{app, config::Config};
+use civic_sync_api::{app, config::Config, state::AppState};
 use sqlx::postgres::PgPoolOptions;
+use tokio::sync::watch;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -35,13 +36,30 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    let router = app::router_with_config(database, config.clone());
+    let state = AppState::with_config(database, config.clone());
+    let (triggers_tx, triggers_rx) = civic_sync_api::features::triggers::channel();
+    // Replace the dummy sender AppState wired up with the actual one so
+    // that resource status hooks and incident-create hooks can notify the
+    // real driver task.
+    let mut state = state;
+    state.triggers_tx = triggers_tx;
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+    let triggers_handle = {
+        let state = state.clone();
+        tokio::spawn(async move {
+            civic_sync_api::features::triggers::run(state, triggers_rx, shutdown_rx).await;
+        })
+    };
+
+    let router = app::router_with_state(state);
     let listener = tokio::net::TcpListener::bind(config.bind_address).await?;
     let address = listener.local_addr()?;
     tracing::info!(%address, "Civic-Sync API listening");
     axum::serve(listener, router)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+    let _ = shutdown_tx.send(true);
+    let _ = triggers_handle.await;
     Ok(())
 }
 
