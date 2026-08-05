@@ -443,9 +443,9 @@ pub struct ResourceRow {
     pub id: Uuid,
     pub center_id: Option<Uuid>,
     pub incident_id: Option<Uuid>,
-    pub resource_type: serde_json::Value,
+    pub resource_type: String,
     pub unit_identifier: String,
-    pub status: serde_json::Value,
+    pub status: String,
     pub distance_passed_km: f64,
     pub distance_remaining_km: f64,
     pub latitude: f64,
@@ -493,10 +493,13 @@ impl From<ResourceRow> for Resource {
             id: row.id,
             center_id: row.center_id,
             incident_id: row.incident_id,
-            resource_type: serde_json::from_value(row.resource_type)
+            resource_type: serde_json::from_str(&row.resource_type)
+                .or_else(|_| serde_json::from_str(&format!("\"{}\"", row.resource_type)))
                 .unwrap_or(ResourceType::Ambulance),
             unit_identifier: row.unit_identifier,
-            status: serde_json::from_value(row.status).unwrap_or(ResourceStatus::EnRoute),
+            status: serde_json::from_str(&row.status)
+                .or_else(|_| serde_json::from_str(&format!("\"{}\"", row.status)))
+                .unwrap_or(ResourceStatus::EnRoute),
             distance_passed_km: row.distance_passed_km,
             distance_remaining_km: row.distance_remaining_km,
             latitude: row.latitude,

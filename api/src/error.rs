@@ -18,6 +18,10 @@ pub enum ApiError {
     Database(#[from] sqlx::Error),
     #[error("internal error: {0}")]
     Internal(String),
+    #[error("unauthorized")]
+    Unauthorized,
+    #[error("forbidden: {0}")]
+    Forbidden(String),
 }
 
 impl ApiError {
@@ -28,6 +32,8 @@ impl ApiError {
             ApiError::Conflict(_) => StatusCode::CONFLICT,
             ApiError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            ApiError::Unauthorized => StatusCode::UNAUTHORIZED,
+            ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
         }
     }
 
@@ -38,6 +44,8 @@ impl ApiError {
             ApiError::Conflict(_) => "conflict",
             ApiError::Database(_) => "database_error",
             ApiError::Internal(_) => "internal_error",
+            ApiError::Unauthorized => "unauthorized",
+            ApiError::Forbidden(_) => "forbidden",
         }
     }
 }

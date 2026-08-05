@@ -465,7 +465,7 @@ pub struct HelperTeamRow {
     pub team_name: String,
     pub total_members: i32,
     pub assigned_members: i32,
-    pub status: serde_json::Value,
+    pub status: String,
     pub latitude: f64,
     pub longitude: f64,
     pub created_at: DateTime<Utc>,
@@ -481,7 +481,9 @@ impl From<HelperTeamRow> for HelperTeam {
             team_name: row.team_name,
             total_members: row.total_members as u32,
             assigned_members: row.assigned_members as u32,
-            status: serde_json::from_value(row.status).unwrap_or(HelperTeamStatus::Available),
+            status: serde_json::from_str(&row.status)
+                .or_else(|_| serde_json::from_str(&format!("\"{}\"", row.status)))
+                .unwrap_or(HelperTeamStatus::Available),
             latitude: row.latitude,
             longitude: row.longitude,
             created_at: row.created_at,

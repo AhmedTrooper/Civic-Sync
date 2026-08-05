@@ -325,7 +325,7 @@ pub struct AssistanceRequestRow {
     pub id: Uuid,
     pub resource_id: Uuid,
     pub issue_description: String,
-    pub status: serde_json::Value,
+    pub status: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub server_synced_at: Option<DateTime<Utc>>,
@@ -337,7 +337,9 @@ impl From<AssistanceRequestRow> for AssistanceRequest {
             id: row.id,
             resource_id: row.resource_id,
             issue_description: row.issue_description,
-            status: serde_json::from_value(row.status).unwrap_or(AssistanceStatus::Pending),
+            status: serde_json::from_str(&row.status)
+                .or_else(|_| serde_json::from_str(&format!("\"{}\"", row.status)))
+                .unwrap_or(AssistanceStatus::Pending),
             created_at: row.created_at,
             updated_at: row.updated_at,
             server_synced_at: row.server_synced_at,

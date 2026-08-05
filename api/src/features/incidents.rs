@@ -697,7 +697,7 @@ pub struct IncidentRow {
     pub casualty_count: i32,
     pub latitude: f64,
     pub longitude: f64,
-    pub status: serde_json::Value,
+    pub status: String,
     pub required_resource_types: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -706,7 +706,9 @@ pub struct IncidentRow {
 
 impl From<IncidentRow> for Incident {
     fn from(row: IncidentRow) -> Self {
-        let status = serde_json::from_value(row.status).unwrap_or(IncidentStatus::Active);
+        let status = serde_json::from_str(&row.status)
+            .or_else(|_| serde_json::from_str(&format!("\"{}\"", row.status)))
+            .unwrap_or(IncidentStatus::Active);
         let required_resource_types = row
             .required_resource_types
             .into_iter()

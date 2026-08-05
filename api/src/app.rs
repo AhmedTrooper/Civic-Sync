@@ -98,7 +98,8 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
         .route("/v1/admin/simulation/pause", post(simulation::pause))
         .route("/v1/admin/simulation/resume", post(simulation::resume))
         .route("/v1/admin/simulation/inject", post(simulation::inject))
-        .route("/v1/sync/ws", get(sync::ws_handler));
+        .route("/v1/sync/ws", get(sync::ws_handler))
+        .layer(axum::middleware::from_fn(crate::auth::rbac_middleware));
 
     Router::new()
         .route("/health/live", get(health::live))
