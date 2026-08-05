@@ -25,9 +25,23 @@ pub struct S3Config {
 
 #[derive(Debug, Clone, Default)]
 pub struct AiConfig {
+    /// Provider name (openai, bedrock, cohere, gemini, anthropic, ollama, ...).
+    /// Any rig-core 0.39 supported value is acceptable — the orchestrator
+    /// treats the string opaquely so swapping providers is config-only.
     pub provider: Option<String>,
+    /// Model identifier as the upstream provider expects it.
     pub model: Option<String>,
+    /// API key for the configured provider.
     pub api_key: Option<String>,
+}
+
+impl AiConfig {
+    /// True when provider + model + api_key are all populated. The orchestrator
+    /// uses this to decide between a real LLM call and the heuristic fallback
+    /// (data.md §5B / §7).
+    pub fn is_configured(&self) -> bool {
+        self.provider.is_some() && self.model.is_some() && self.api_key.is_some()
+    }
 }
 
 impl Config {
@@ -57,6 +71,7 @@ impl Config {
             model: env_opt("AI_MODEL"),
             api_key: env_opt("AI_API_KEY"),
         };
+        validate_ai_config(&ai)?;
         let allowed_origins = std::env::var("ALLOWED_ORIGINS")
             .ok()
             .map(|raw| {
@@ -95,9 +110,80 @@ impl Config {
     }
 }
 
+/// All-or-nothing invariant for the AI block. If any of provider/model/api_key
+/// is set, all three must be set — otherwise startup fails fast. This prevents
+/// the orchestrator from silently falling back to the heuristic when the user
+/// thought they had wired up an LLM.
+fn validate_ai_config(ai: &AiConfig) -> anyhow::Result<()> {
+    let set = [
+        ("AI_PROVIDER", ai.provider.as_deref()),
+        ("AI_MODEL", ai.model.as_deref()),
+        ("AI_API_KEY", ai.api_key.as_deref()),
+    ];
+    let present: Vec<&str> = set
+        .iter()
+        .filter_map(|(name, value)| value.is_some().then_some(*name))
+        .collect();
+    if present.is_empty() {
+        return Ok(());
+    }
+    if present.len() != set.len() {
+        let missing: Vec<&str> = set
+            .iter()
+            .filter_map(|(name, value)| value.is_none().then_some(*name))
+            .collect();
+        anyhow::bail!(
+            "AI configuration is partial: {} set, {} missing. Either set all three of AI_PROVIDER, AI_MODEL, AI_API_KEY or leave all three unset to run on the heuristic fallback.",
+            present.join(", "),
+            missing.join(", ")
+        );
+    }
+    Ok(())
+}
+
 fn env_opt(name: &str) -> Option<String> {
     std::env::var(name)
         .ok()
         .map(|raw| raw.trim().to_string())
         .filter(|value| !value.is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ai_config_is_configured_only_when_all_three_present() {
+        let mut ai = AiConfig::default();
+        assert!(!ai.is_configured());
+        ai.provider = Some("openai".into());
+        assert!(!ai.is_configured());
+        ai.model = Some("gpt-4o-mini".into());
+        assert!(!ai.is_configured());
+        ai.api_key = Some("sk-test".into());
+        assert!(ai.is_configured());
+    }
+
+    #[test]
+    fn ai_validator_rejects_partial_configuration() {
+        let ai = AiConfig {
+            provider: Some("openai".into()),
+            model: Some("gpt-4o-mini".into()),
+            api_key: None,
+        };
+        let err = validate_ai_config(&ai).unwrap_err().to_string();
+        assert!(err.contains("AI_API_KEY"));
+        assert!(err.contains("AI_PROVIDER"));
+    }
+
+    #[test]
+    fn ai_validator_accepts_all_set_and_all_unset() {
+        let all_set = AiConfig {
+            provider: Some("ollama".into()),
+            model: Some("llama3".into()),
+            api_key: Some("ignored".into()),
+        };
+        assert!(validate_ai_config(&all_set).is_ok());
+        assert!(validate_ai_config(&AiConfig::default()).is_ok());
+    }
 }
