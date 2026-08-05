@@ -27,6 +27,7 @@ aws-sdk-s3 = "1.74.0"
 dotenvy = "0.15.7"
 rig = "0.39.0"
 thiserror = "1.0.63"
+schemars = { version = "1.2.2", features = ["derive", "uuid1"] }
 
 [dev-dependencies]
 tokio = { version = "1.52.3", features = ["full", "test-util"] }

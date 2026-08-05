@@ -19,13 +19,13 @@ use crate::{
 /// data.md §7 — the named tool-call the Rig AI engine will emit.
 pub const TOOL_NAME: &str = "dispatch_multi_center_response";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCallEnvelope {
     pub tool_name: String,
     pub arguments: DispatchArguments,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DispatchArguments {
     pub incident_id: Uuid,
     pub primary_center_id: Uuid,
@@ -35,7 +35,7 @@ pub struct DispatchArguments {
     pub justification: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AllocationEntry {
     pub center_name: String,
     pub team_id: Uuid,
@@ -43,7 +43,7 @@ pub struct AllocationEntry {
     pub distance_km: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceStateModification {
     pub resource_id: Uuid,
     pub new_status: String,

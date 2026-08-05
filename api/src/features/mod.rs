@@ -5,4 +5,5 @@ pub mod health;
 pub mod helper_allocations;
 pub mod helper_teams;
 pub mod incidents;
+pub mod orchestrator;
 pub mod resources;
