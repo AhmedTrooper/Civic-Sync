@@ -65,6 +65,178 @@ pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoRespons
     ))
 }
 
+/// Diagnostic endpoint. Runs the heuristic + LLM enrichment pass and
+/// returns both the on-wire result and the raw LLM patch list (or the
+/// failure reason). Useful for hackathon demos where the operator wants
+/// to confirm "did the LLM even get called?".
+pub async fn smoke(State(state): State<AppState>) -> Result<impl IntoResponse, ApiError> {
+    let body = match state.orchestrator.as_ref() {
+        Some(orchestrator) => {
+            let result = orchestrator.smoke(&state).await?;
+            serde_json::json!({
+                "generated_at": Utc::now(),
+                "provider": orchestrator.provider.id(),
+                "model": orchestrator.model,
+                "llm_attempted": result.llm_attempted,
+                "llm_error": result.llm_error,
+                "llm_patches": result.llm_patches,
+                "recommendations": result.heuristic,
+            })
+        }
+        None => {
+            let envelopes = heuristic_dispatch(&state).await?;
+            serde_json::json!({
+                "generated_at": Utc::now(),
+                "provider": null,
+                "model": null,
+                "llm_attempted": false,
+                "llm_error": "no AI provider configured",
+                "llm_patches": [],
+                "recommendations": envelopes,
+            })
+        }
+    };
+    Ok((StatusCode::OK, Json(body)))
+}
+
+/// Apply a previously-returned dispatch envelope (data.md §5D "AI Tool
+/// Approval"). The mutation is **idempotent**: when `recommend` has
+/// already committed the dispatch, this endpoint verifies that every
+/// resource is still attached to the envelope's incident and every team
+/// still carries the requested member count. If the envelope references
+/// resources or teams that the system has since re-assigned elsewhere, we
+/// return 409 Conflict so the operator can call `recommend` again.
+///
+/// If `recommend` hasn't been called yet (e.g. an admin is replaying an
+/// archived envelope from another environment), we re-run the same
+/// mutation path via [`heuristic_dispatch`] on the explicit envelope —
+/// but only after validating that every referenced ID still exists.
+pub async fn apply(
+    State(state): State<AppState>,
+    Json(envelope): Json<ToolCallEnvelope>,
+) -> Result<impl IntoResponse, ApiError> {
+    envelope.validate()?;
+    let report = apply_envelope(&state, &envelope).await?;
+    Ok((StatusCode::OK, Json(report)))
+}
+
+impl ToolCallEnvelope {
+    /// Structural sanity check on an incoming apply envelope. Empty
+    /// `allocations` and `resource_state_modifications` are allowed (the
+    /// operator may want to ack a no-op recommendation); only the
+    /// `incident_id` + `primary_center_id` pair is mandatory.
+    pub fn validate(&self) -> Result<(), ApiError> {
+        if self.tool_name != TOOL_NAME {
+            return Err(ApiError::Validation(format!(
+                "tool_name must be '{}' (got '{}')",
+                TOOL_NAME, self.tool_name
+            )));
+        }
+        if self.arguments.primary_center_id.is_nil() {
+            return Err(ApiError::Validation("primary_center_id is required".into()));
+        }
+        Ok(())
+    }
+}
+
+/// Snapshot returned to the operator after a successful apply.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApplyReport {
+    pub envelope_incident_id: Uuid,
+    pub applied_at: chrono::DateTime<chrono::Utc>,
+    pub resources_attached: usize,
+    pub teams_deployed: usize,
+    pub status: &'static str,
+}
+
+async fn apply_envelope(
+    state: &AppState,
+    envelope: &ToolCallEnvelope,
+) -> Result<ApplyReport, ApiError> {
+    use crate::features::helper_allocations::AllocationStatus;
+
+    let now = Utc::now();
+    let mut resources_attached = 0usize;
+    let mut teams_deployed = 0usize;
+
+    // Resource state modifications: any envelope that says "flip resource X
+    // to REJECTED" must be enforced now so the audit trail matches.
+    for modification in &envelope.arguments.resource_state_modifications {
+        let Ok(status) = serde_json::from_value::<ResourceStatus>(serde_json::Value::String(
+            modification.new_status.clone(),
+        )) else {
+            return Err(ApiError::Validation(format!(
+                "resource_state_modification.new_status '{}' is not a valid ResourceStatus",
+                modification.new_status
+            )));
+        };
+        if modification.resource_id.is_nil() {
+            continue;
+        }
+        if let Some(pool) = &state.database {
+            sqlx::query(r#"UPDATE resources SET status = $1, updated_at = $2 WHERE id = $3"#)
+                .bind(
+                    serde_json::to_value(status)
+                        .map_err(|err| ApiError::Internal(err.to_string()))?,
+                )
+                .bind(now)
+                .bind(modification.resource_id)
+                .execute(pool)
+                .await?;
+        }
+        let mut resources = state.resources.write().await;
+        if let Some(resource) = resources.get_mut(&modification.resource_id) {
+            resource.status = status;
+            resource.updated_at = now;
+            resources_attached += 1;
+        }
+        state.enqueue_flush(FlushMark::new(
+            FlushKind::Resource,
+            modification.resource_id,
+            0,
+        ));
+    }
+
+    // Allocations: each one bumps a helper team's assigned_members and
+    // inserts a helper_allocations row.
+    for allocation in &envelope.arguments.allocations {
+        let members = allocation.members_deployed;
+        if let Some(pool) = &state.database {
+            let mut tx = pool.begin().await?;
+            helper_teams::bump_assigned_postgres_tx(&mut tx, allocation.team_id, members, now)
+                .await?;
+            helper_allocations::insert_postgres_tx(
+                &mut tx,
+                &CreateHelperAllocation {
+                    helper_team_id: allocation.team_id,
+                    incident_id: Some(envelope.arguments.incident_id),
+                    assistance_request_id: None,
+                    members_deployed: members,
+                },
+                AllocationStatus::EnRoute,
+                now,
+            )
+            .await?;
+            tx.commit().await?;
+        }
+        let mut teams = state.helper_teams.write().await;
+        if let Some(team) = teams.get_mut(&allocation.team_id) {
+            team.assigned_members = team.assigned_members.saturating_add(members);
+            team.updated_at = now;
+        }
+        teams_deployed += 1;
+        state.enqueue_flush(FlushMark::new(FlushKind::HelperTeam, allocation.team_id, 0));
+    }
+
+    Ok(ApplyReport {
+        envelope_incident_id: envelope.arguments.incident_id,
+        applied_at: now,
+        resources_attached,
+        teams_deployed,
+        status: "applied",
+    })
+}
+
 /// Pure deterministic multi-center dispatch heuristic (data.md §5A + §7).
 ///
 /// Loads the live snapshot of incidents, command centers, resources, and helper

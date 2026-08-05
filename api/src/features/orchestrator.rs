@@ -298,6 +298,54 @@ impl Orchestrator {
             }
         }
     }
+
+    /// Diagnostic variant of [`dispatch`] used by the smoke endpoint.
+    /// Returns both the heuristic result and the raw LLM patch list (if any)
+    /// so demo viewers can see exactly what the LLM said vs. what the
+    /// system committed. When the LLM is unavailable, `llm_attempted` is
+    /// `false` and the caller still gets the heuristic.
+    pub async fn smoke(&self, state: &AppState) -> Result<SmokeResult, ApiError> {
+        let heuristic = dispatch::heuristic_dispatch(state).await?;
+        if !self.gate.try_acquire().await {
+            return Ok(SmokeResult {
+                heuristic,
+                llm_attempted: false,
+                llm_patches: Vec::new(),
+                llm_error: Some("semaphore exhausted".to_string()),
+            });
+        }
+        let prompt = build_prompt(&heuristic);
+        match call_provider(self, &prompt).await {
+            Ok(patches) => {
+                let enriched = apply_patches(&heuristic, patches.clone())
+                    .unwrap_or_else(|_| heuristic.clone());
+                Ok(SmokeResult {
+                    heuristic: enriched,
+                    llm_attempted: true,
+                    llm_patches: patches,
+                    llm_error: None,
+                })
+            }
+            Err(error) => Ok(SmokeResult {
+                heuristic,
+                llm_attempted: true,
+                llm_patches: Vec::new(),
+                llm_error: Some(error.to_string()),
+            }),
+        }
+    }
+}
+
+/// Diagnostic snapshot returned by `Orchestrator::smoke` and surfaced via
+/// `POST /api/v1/dispatch/smoke`. Lets a demo viewer confirm that the
+/// LLM was reached (or skipped, with a reason) and inspect the raw patch
+/// list the model returned.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SmokeResult {
+    pub heuristic: Vec<ToolCallEnvelope>,
+    pub llm_attempted: bool,
+    pub llm_patches: Vec<JustificationPatch>,
+    pub llm_error: Option<String>,
 }
 
 /// Ask the configured LLM to refine the per-incident justification text. The
@@ -318,11 +366,12 @@ async fn enrich_with_llm(
 }
 
 /// A patch that refines a single envelope's justification text. The LLM
-/// returns these in the same order as the input envelopes.
+/// returns these in the same order as the input envelopes. `pub` so the
+/// smoke endpoint can serialise the raw model output.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-struct JustificationPatch {
-    incident_id: Uuid,
-    justification: String,
+pub struct JustificationPatch {
+    pub incident_id: Uuid,
+    pub justification: String,
 }
 
 fn build_prompt(envelopes: &[ToolCallEnvelope]) -> String {

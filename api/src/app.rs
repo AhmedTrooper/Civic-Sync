@@ -18,7 +18,7 @@ use crate::{
         assistance_requests, command_centers, dispatch, health, helper_allocations, helper_teams,
         incidents::{self},
         resources::{self},
-        simulation,
+        simulation, sync,
     },
     state::AppState,
 };
@@ -79,10 +79,13 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
             get(helper_allocations::get_one),
         )
         .route("/v1/dispatch/recommendations", post(dispatch::recommend))
+        .route("/v1/dispatch/apply", post(dispatch::apply))
+        .route("/v1/dispatch/smoke", post(dispatch::smoke))
         .route("/v1/admin/simulation", get(simulation::status))
         .route("/v1/admin/simulation/pause", post(simulation::pause))
         .route("/v1/admin/simulation/resume", post(simulation::resume))
-        .route("/v1/admin/simulation/inject", post(simulation::inject));
+        .route("/v1/admin/simulation/inject", post(simulation::inject))
+        .route("/v1/sync/ws", get(sync::ws_handler));
 
     Router::new()
         .route("/health/live", get(health::live))
