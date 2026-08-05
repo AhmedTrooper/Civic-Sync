@@ -26,6 +26,7 @@ fn sample_incident() -> Incident {
         latitude: 23.78,
         longitude: 90.37,
         status: IncidentStatus::Active,
+        required_resource_types: vec![ResourceType::Ambulance],
         created_at: now,
         updated_at: now,
         server_synced_at: None,

@@ -302,6 +302,21 @@ pub(crate) async fn list_postgres(
     Ok(rows.into_iter().map(HelperTeam::from).collect())
 }
 
+#[allow(dead_code)] // consumed by the dispatch engine in src/features/dispatch.rs
+pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<HelperTeam>, ApiError> {
+    let rows = sqlx::query_as::<_, HelperTeamRow>(
+        r#"SELECT id, center_id, team_name, total_members, assigned_members, status,
+                  COALESCE(ST_Y(current_location::geometry), 0.0) AS latitude,
+                  COALESCE(ST_X(current_location::geometry), 0.0) AS longitude,
+                  created_at, updated_at, server_synced_at
+           FROM helper_teams
+           ORDER BY team_name ASC"#,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows.into_iter().map(HelperTeam::from).collect())
+}
+
 pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<HelperTeam, ApiError> {
     let row = sqlx::query_as::<_, HelperTeamRow>(
         r#"SELECT id, center_id, team_name, total_members, assigned_members, status,

@@ -144,6 +144,21 @@ pub(crate) async fn list_postgres(
     Ok(rows.into_iter().map(CommandCenter::from).collect())
 }
 
+#[allow(dead_code)] // consumed by the dispatch engine in src/features/dispatch.rs
+pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<CommandCenter>, ApiError> {
+    let rows = sqlx::query_as::<_, CommandCenterRow>(
+        r#"SELECT id, name, is_core_center,
+                  ST_Y(location::geometry) AS latitude,
+                  ST_X(location::geometry) AS longitude,
+                  created_at, updated_at, server_synced_at
+           FROM command_centers
+           ORDER BY is_core_center DESC, name ASC"#,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows.into_iter().map(CommandCenter::from).collect())
+}
+
 pub(crate) async fn fetch_postgres(
     pool: &sqlx::PgPool,
     id: Uuid,

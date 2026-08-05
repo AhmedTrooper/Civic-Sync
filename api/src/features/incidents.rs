@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, state::AppState};
+use crate::{error::ApiError, features::resources::ResourceType, state::AppState};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -28,6 +28,8 @@ pub struct Incident {
     pub latitude: f64,
     pub longitude: f64,
     pub status: IncidentStatus,
+    #[serde(default)]
+    pub required_resource_types: Vec<ResourceType>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub server_synced_at: Option<DateTime<Utc>>,
@@ -41,6 +43,8 @@ pub struct CreateIncident {
     pub casualty_count: u32,
     pub latitude: f64,
     pub longitude: f64,
+    #[serde(default)]
+    pub required_resource_types: Vec<ResourceType>,
 }
 
 impl CreateIncident {
@@ -97,6 +101,7 @@ pub async fn create(
         latitude: input.latitude,
         longitude: input.longitude,
         status: IncidentStatus::Active,
+        required_resource_types: input.required_resource_types,
         created_at: now,
         updated_at: now,
         server_synced_at: None,
@@ -226,13 +231,24 @@ pub(crate) async fn insert_postgres(
     pool: &sqlx::PgPool,
     incident: &Incident,
 ) -> Result<(), ApiError> {
+    let resource_types: Vec<String> = incident
+        .required_resource_types
+        .iter()
+        .map(|kind| {
+            serde_json::to_value(kind)
+                .ok()
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .unwrap_or_default()
+        })
+        .collect();
     sqlx::query(
         r#"INSERT INTO incidents (
             id, title, severity_level, affected_people, casualty_count,
-            location, status, created_at, updated_at, server_synced_at
+            location, status, required_resource_types,
+            created_at, updated_at, server_synced_at
         ) VALUES ($1, $2, $3, $4, $5,
                   ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
-                  $8, $9, $10, $11)"#,
+                  $8, $9, $10, $11, $12)"#,
     )
     .bind(incident.id)
     .bind(&incident.title)
@@ -242,6 +258,7 @@ pub(crate) async fn insert_postgres(
     .bind(incident.longitude)
     .bind(incident.latitude)
     .bind(serde_json::to_value(incident.status).map_err(|err| ApiError::Internal(err.to_string()))?)
+    .bind(resource_types)
     .bind(incident.created_at)
     .bind(incident.updated_at)
     .bind(incident.server_synced_at)
@@ -259,7 +276,8 @@ pub(crate) async fn list_postgres(
         r#"SELECT id, title, severity_level, affected_people, casualty_count,
                   ST_Y(location::geometry) AS latitude,
                   ST_X(location::geometry) AS longitude,
-                  status, created_at, updated_at, server_synced_at
+                  status, required_resource_types,
+                  created_at, updated_at, server_synced_at
            FROM incidents"#,
     );
     builder.push(" WHERE 1 = 1");
@@ -302,7 +320,8 @@ pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Inci
         r#"SELECT id, title, severity_level, affected_people, casualty_count,
                   ST_Y(location::geometry) AS latitude,
                   ST_X(location::geometry) AS longitude,
-                  status, created_at, updated_at, server_synced_at
+                  status, required_resource_types,
+                  created_at, updated_at, server_synced_at
            FROM incidents WHERE id = $1"#,
     )
     .bind(id)
@@ -322,6 +341,7 @@ pub struct IncidentRow {
     pub latitude: f64,
     pub longitude: f64,
     pub status: serde_json::Value,
+    pub required_resource_types: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub server_synced_at: Option<DateTime<Utc>>,
@@ -330,6 +350,11 @@ pub struct IncidentRow {
 impl From<IncidentRow> for Incident {
     fn from(row: IncidentRow) -> Self {
         let status = serde_json::from_value(row.status).unwrap_or(IncidentStatus::Active);
+        let required_resource_types = row
+            .required_resource_types
+            .into_iter()
+            .filter_map(|name| serde_json::from_value(serde_json::Value::String(name)).ok())
+            .collect();
         Incident {
             id: row.id,
             title: row.title,
@@ -339,6 +364,7 @@ impl From<IncidentRow> for Incident {
             latitude: row.latitude,
             longitude: row.longitude,
             status,
+            required_resource_types,
             created_at: row.created_at,
             updated_at: row.updated_at,
             server_synced_at: row.server_synced_at,
