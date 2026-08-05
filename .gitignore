@@ -32,3 +32,6 @@
 
 #Additional
 edge.cases
+
+# Project specification document (treated as local reference, not source)
+/data.md
