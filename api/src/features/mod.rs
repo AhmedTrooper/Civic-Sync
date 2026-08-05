@@ -1,6 +1,7 @@
 pub mod assistance_requests;
 pub mod command_centers;
 pub mod dispatch;
+pub mod flush;
 pub mod health;
 pub mod helper_allocations;
 pub mod helper_teams;

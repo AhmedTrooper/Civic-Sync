@@ -1,13 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
 use sqlx::PgPool;
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{RwLock, broadcast, mpsc};
 use uuid::Uuid;
 
 use crate::{
     config::Config,
     features::{
-        assistance_requests::AssistanceRequest, command_centers::CommandCenter,
+        assistance_requests::AssistanceRequest, command_centers::CommandCenter, flush::FlushMark,
         helper_allocations::HelperAllocation, helper_teams::HelperTeam, incidents::Incident,
         orchestrator::Orchestrator, resources::Resource, triggers::TriggerEvent,
     },
@@ -32,6 +32,14 @@ pub struct AppState {
     /// updates push `TriggerEvent::ResourceStuck` etc. here, and the
     /// triggers driver drains the receiver on its 30-second ticker.
     pub triggers_tx: mpsc::Sender<TriggerEvent>,
+    /// Sender for 60s conditional flush marks (data.md §5C). Every
+    /// mutating endpoint pushes a mark here so the driver can stamp
+    /// `server_synced_at = NOW()` on the affected rows once per minute.
+    pub flush_tx: mpsc::Sender<FlushMark>,
+    /// Broadcast for `FlushNotice` events (data.md §5C). Subscribers
+    /// such as the WebSocket sync layer receive one notice per 60s
+    /// window that contained at least one mutation.
+    pub flush_notice_tx: broadcast::Sender<crate::features::flush::FlushNotice>,
 }
 
 impl AppState {
@@ -50,6 +58,8 @@ impl AppState {
             .collect::<HashMap<_, _>>();
         let orchestrator = Arc::new(Orchestrator::from_config(&config.ai).ok().flatten());
         let (triggers_tx, _triggers_rx) = crate::features::triggers::channel();
+        let (flush_tx, _flush_rx) = mpsc::channel(crate::features::flush::MARK_CHANNEL_CAPACITY);
+        let (flush_notice_tx, _) = broadcast::channel(64);
         Self {
             config,
             database,
@@ -61,6 +71,23 @@ impl AppState {
             helper_allocations: Arc::new(RwLock::new(HashMap::new())),
             orchestrator,
             triggers_tx,
+            flush_tx,
+            flush_notice_tx,
         }
+    }
+
+    /// Fire-and-forget enqueue of a flush mark. The driver task drains
+    /// the channel on its 60s tick. Failure to send (driver shutdown) is
+    /// logged at debug and otherwise ignored — flush marks are advisory.
+    pub fn enqueue_flush(&self, mark: FlushMark) {
+        let tx = self.flush_tx.clone();
+        tokio::spawn(async move {
+            if let Err(error) = tx.send(mark).await {
+                tracing::debug!(
+                    error = %error,
+                    "failed to enqueue flush mark; driver may have shut down"
+                );
+            }
+        });
     }
 }

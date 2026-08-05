@@ -10,7 +10,10 @@ use uuid::Uuid;
 
 use crate::{
     error::ApiError,
-    features::helper_teams::{HelperTeam, HelperTeamRow},
+    features::{
+        flush::{FlushKind, FlushMark},
+        helper_teams::{HelperTeam, HelperTeamRow},
+    },
     state::AppState,
 };
 
@@ -75,10 +78,12 @@ pub async fn create(
     Json(input): Json<CreateHelperAllocation>,
 ) -> Result<impl IntoResponse, ApiError> {
     input.validate()?;
-    match &state.database {
+    let result = match &state.database {
         Some(pool) => create_postgres(pool, &input).await,
         None => create_in_memory(&state, &input).await,
-    }
+    }?;
+    state.enqueue_flush(FlushMark::new(FlushKind::HelperAllocation, result.1.id, 0));
+    Ok(result)
 }
 
 pub async fn list(

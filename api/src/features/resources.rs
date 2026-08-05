@@ -8,7 +8,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, features::triggers::TriggerEvent, state::AppState};
+use crate::{
+    error::ApiError,
+    features::{
+        flush::{FlushKind, FlushMark},
+        triggers::TriggerEvent,
+    },
+    state::AppState,
+};
 
 /// Vehicles & physical supplies tracked by the network.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -137,6 +144,7 @@ pub async fn create(
             .await
             .insert(resource.id, resource.clone());
     }
+    state.enqueue_flush(FlushMark::new(FlushKind::Resource, resource.id, 0));
     Ok((StatusCode::CREATED, Json(resource)))
 }
 
@@ -226,6 +234,7 @@ async fn update_status_in_memory(
     resource.updated_at = Utc::now();
     let snapshot = resource.clone();
     drop(resources);
+    state.enqueue_flush(FlushMark::new(FlushKind::Resource, id, 0));
     fire_status_hook(state, id, previous_status, snapshot.status);
     Ok(Json(snapshot))
 }
@@ -374,6 +383,7 @@ async fn update_status_postgres(
     .fetch_one(pool)
     .await?;
     let updated = Resource::from(row);
+    state.enqueue_flush(FlushMark::new(FlushKind::Resource, id, 0));
     fire_status_hook(state, id, previous_status, updated.status);
     Ok(Json(updated))
 }

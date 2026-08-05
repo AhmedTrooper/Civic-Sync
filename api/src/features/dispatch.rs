@@ -8,6 +8,7 @@ use crate::{
     error::ApiError,
     features::{
         command_centers::{self, CommandCenter},
+        flush::{FlushKind, FlushMark},
         helper_allocations::{self, AllocationStatus, CreateHelperAllocation},
         helper_teams::{self, HelperTeam},
         incidents::{self, Incident},
@@ -291,6 +292,17 @@ pub(crate) async fn heuristic_dispatch(
         });
     }
 
+    // Capture the keys we are about to mutate so the flush-mark enqueue
+    // below can run after the if/else branch (which consumes the vectors).
+    let mutated_resource_ids: Vec<Uuid> = pending_modifications
+        .iter()
+        .map(|(id, _, _, _)| *id)
+        .collect();
+    let mutated_allocation_team_ids: Vec<Uuid> = pending_allocations
+        .iter()
+        .map(|a| a.helper_team_id)
+        .collect();
+
     // 3) Apply mutations: in-memory mirror OR a single postgres batch transaction.
     if let Some(pool) = &state.database {
         let mut tx = pool.begin().await?;
@@ -336,6 +348,15 @@ pub(crate) async fn heuristic_dispatch(
         let mut state_teams = state.helper_teams.write().await;
         *state_teams = teams_view;
         drop(state_teams);
+    }
+
+    // Enqueue a 60s flush mark for every row the dispatch path mutated so
+    // the flush driver stamps server_synced_at on the next tick.
+    for resource_id in mutated_resource_ids {
+        state.enqueue_flush(FlushMark::new(FlushKind::Resource, resource_id, 0));
+    }
+    for team_id in mutated_allocation_team_ids {
+        state.enqueue_flush(FlushMark::new(FlushKind::HelperTeam, team_id, 0));
     }
 
     Ok(envelopes)

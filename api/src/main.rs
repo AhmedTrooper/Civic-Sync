@@ -38,16 +38,27 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState::with_config(database, config.clone());
     let (triggers_tx, triggers_rx) = civic_sync_api::features::triggers::channel();
-    // Replace the dummy sender AppState wired up with the actual one so
+    let (flush_tx, flush_rx, flush_notice_tx) = civic_sync_api::features::flush::channels();
+    // Replace the dummy senders AppState wired up with the actual ones so
     // that resource status hooks and incident-create hooks can notify the
-    // real driver task.
+    // real driver tasks.
     let mut state = state;
     state.triggers_tx = triggers_tx;
+    state.flush_tx = flush_tx.clone();
+    state.flush_notice_tx = flush_notice_tx.clone();
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let triggers_handle = {
         let state = state.clone();
+        let sd = shutdown_rx.clone();
         tokio::spawn(async move {
-            civic_sync_api::features::triggers::run(state, triggers_rx, shutdown_rx).await;
+            civic_sync_api::features::triggers::run(state, triggers_rx, sd).await;
+        })
+    };
+    let flush_handle = {
+        let state = state.clone();
+        let sd = shutdown_rx.clone();
+        tokio::spawn(async move {
+            civic_sync_api::features::flush::run(state, flush_rx, flush_notice_tx, sd).await;
         })
     };
 
@@ -60,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     let _ = shutdown_tx.send(true);
     let _ = triggers_handle.await;
+    let _ = flush_handle.await;
     Ok(())
 }
 

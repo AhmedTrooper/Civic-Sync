@@ -8,7 +8,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, state::AppState};
+use crate::{
+    error::ApiError,
+    features::flush::{FlushKind, FlushMark},
+    state::AppState,
+};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -123,6 +127,7 @@ pub async fn create(
             .await
             .insert(team.id, team.clone());
     }
+    state.enqueue_flush(FlushMark::new(FlushKind::HelperTeam, team.id, 0));
     Ok((StatusCode::CREATED, Json(team)))
 }
 
@@ -168,10 +173,12 @@ pub async fn update(
     Path(id): Path<Uuid>,
     Json(update): Json<UpdateHelperTeam>,
 ) -> Result<Json<HelperTeam>, ApiError> {
-    match &state.database {
+    let result = match &state.database {
         Some(pool) => update_postgres(pool, id, update).await,
         None => update_in_memory(&state, id, update).await,
-    }
+    }?;
+    state.enqueue_flush(FlushMark::new(FlushKind::HelperTeam, id, 0));
+    Ok(result)
 }
 
 impl ListHelperTeamsQuery {
@@ -225,7 +232,10 @@ async fn update_in_memory(
         team.status = status;
     }
     team.updated_at = Utc::now();
-    Ok(Json(team.clone()))
+    let snapshot = team.clone();
+    drop(teams);
+    state.enqueue_flush(FlushMark::new(FlushKind::HelperTeam, id, 0));
+    Ok(Json(snapshot))
 }
 
 pub(crate) async fn insert_postgres(

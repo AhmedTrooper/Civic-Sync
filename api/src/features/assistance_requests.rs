@@ -8,7 +8,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, state::AppState};
+use crate::{
+    error::ApiError,
+    features::flush::{FlushKind, FlushMark},
+    state::AppState,
+};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -86,6 +90,7 @@ pub async fn create(
             .await
             .insert(request.id, request.clone());
     }
+    state.enqueue_flush(FlushMark::new(FlushKind::AssistanceRequest, request.id, 0));
     Ok((StatusCode::CREATED, Json(request)))
 }
 
@@ -131,10 +136,12 @@ pub async fn update_status(
     Path(id): Path<Uuid>,
     Json(update): Json<UpdateAssistanceStatus>,
 ) -> Result<Json<AssistanceRequest>, ApiError> {
-    match &state.database {
+    let result = match &state.database {
         Some(pool) => update_status_postgres(pool, id, update.status).await,
         None => update_status_in_memory(&state, id, update.status).await,
-    }
+    }?;
+    state.enqueue_flush(FlushMark::new(FlushKind::AssistanceRequest, id, 0));
+    Ok(result)
 }
 
 impl ListAssistanceRequestsQuery {

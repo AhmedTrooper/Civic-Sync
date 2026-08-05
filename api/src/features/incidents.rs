@@ -8,7 +8,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, features::resources::ResourceType, state::AppState};
+use crate::{
+    error::ApiError,
+    features::{
+        flush::{FlushKind, FlushMark},
+        resources::ResourceType,
+    },
+    state::AppState,
+};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -116,6 +123,7 @@ pub async fn create(
             .await
             .insert(incident.id, incident.clone());
     }
+    state.enqueue_flush(FlushMark::new(FlushKind::Incident, incident.id, 0));
     fire_incident_triggers(&state, &incident);
     Ok((StatusCode::CREATED, Json(incident)))
 }
