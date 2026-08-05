@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     Router,
     http::{HeaderValue, Method},
-    routing::{delete, get, patch, post},
+    routing::{get, patch, post},
 };
 use sqlx::PgPool;
 use tower::ServiceBuilder;
@@ -60,7 +60,10 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
             post(resources::create).get(resources::list),
         )
         .route("/v1/resources/{id}/status", patch(resources::update_status))
-        .route("/v1/resources/{id}", delete(resources::delete))
+        .route(
+            "/v1/resources/{id}",
+            get(resources::get_one).delete(resources::delete),
+        )
         .route("/v1/dispatch/recommendations", post(dispatch::recommend))
         .route("/v1/dispatch/apply", post(dispatch::apply))
         .route("/v1/dispatch/smoke", post(dispatch::smoke))

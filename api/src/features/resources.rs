@@ -179,6 +179,23 @@ pub async fn list(
     Ok(Json(items))
 }
 
+pub async fn get_one(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Resource>, ApiError> {
+    let resource = match &state.database {
+        Some(pool) => fetch_postgres(pool, id).await?,
+        None => state
+            .resources
+            .read()
+            .await
+            .get(&id)
+            .cloned()
+            .ok_or(ApiError::NotFound)?,
+    };
+    Ok(Json(resource))
+}
+
 pub async fn update_status(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -388,6 +405,21 @@ pub(crate) async fn list_postgres(
 
 pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<Resource>, ApiError> {
     list_postgres(pool, &ListResourcesQuery::default()).await
+}
+
+pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Resource, ApiError> {
+    let row = sqlx::query_as::<_, ResourceRow>(
+        r#"SELECT id, owner_center_id, assigned_incident_id, resource_type, unit_identifier,
+                  status, distance_passed_km, distance_remaining_km, latitude, longitude,
+                  total_capacity, current_capacity,
+                  created_at, updated_at, server_synced_at
+           FROM resources WHERE id = $1"#,
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(ApiError::NotFound)?;
+    Ok(Resource::from(row))
 }
 
 async fn update_status_postgres(

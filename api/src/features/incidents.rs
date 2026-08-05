@@ -607,10 +607,8 @@ pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<Inciden
 
 pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Incident, ApiError> {
     let row = sqlx::query_as::<_, IncidentRow>(
-        r#"SELECT id, title, severity_level, affected_people, casualty_count,
-                  ST_Y(location::geometry) AS latitude,
-                  ST_X(location::geometry) AS longitude,
-                  status, required_resource_types,
+        r#"SELECT id, title, primary_center_id, severity_level, affected_people, casualty_count,
+                  latitude, longitude, status,
                   created_at, updated_at, server_synced_at
            FROM incidents WHERE id = $1"#,
     )
