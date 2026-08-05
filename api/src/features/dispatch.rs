@@ -51,7 +51,10 @@ pub struct ResourceStateModification {
 }
 
 pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoResponse, ApiError> {
-    let envelopes = heuristic_dispatch(&state).await?;
+    let envelopes = match state.orchestrator.as_ref() {
+        Some(orchestrator) => orchestrator.dispatch(&state).await?,
+        None => heuristic_dispatch(&state).await?,
+    };
     Ok((
         StatusCode::OK,
         Json(serde_json::json!({
