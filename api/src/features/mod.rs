@@ -9,4 +9,5 @@ pub mod incidents;
 pub mod orchestrator;
 pub mod resources;
 pub mod simulation;
+pub mod sync;
 pub mod triggers;
