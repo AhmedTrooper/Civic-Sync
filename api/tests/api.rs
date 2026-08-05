@@ -2,8 +2,11 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use chrono::Utc;
 use civic_sync_api::features::{
+    assistance_requests::{AssistanceRequest, AssistanceStatus},
     command_centers::CommandCenter,
     dispatch::Recommendation,
+    helper_allocations::HelperAllocation,
+    helper_teams::HelperTeam,
     incidents::{Incident, IncidentStatus, priority_reasons, priority_score},
     resources::{Resource, ResourceStatus, ResourceType},
 };
@@ -273,4 +276,180 @@ async fn incident_validation_rejects_bad_severity() {
         StatusCode::BAD_REQUEST,
         "severity_level outside 1..=5 must be rejected"
     );
+}
+
+async fn post_json(service: &axum::Router, uri: &str, payload: &Value) -> (StatusCode, Value) {
+    let response = service
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(uri)
+                .header("content-type", "application/json")
+                .body(Body::from(payload.to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    let status = response.status();
+    let body = axum::body::to_bytes(response.into_body(), 1_000_000)
+        .await
+        .expect("read body");
+    let value = serde_json::from_slice(&body).unwrap_or(json!({}));
+    (status, value)
+}
+
+async fn get_json(service: &axum::Router, uri: &str) -> (StatusCode, Value) {
+    let response = service
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(uri)
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    let status = response.status();
+    let body = axum::body::to_bytes(response.into_body(), 1_000_000)
+        .await
+        .expect("read body");
+    let value = serde_json::from_slice(&body).unwrap_or(json!({}));
+    (status, value)
+}
+
+#[tokio::test]
+async fn helper_team_lifecycle_tracks_capacity() {
+    let app = app::router(None);
+    let (status, body) = post_json(
+        &app,
+        "/api/v1/helper-teams",
+        &json!({
+            "center_id": null,
+            "team_name": "Sylhet Rescue Alpha",
+            "total_members": 10,
+            "latitude": 24.89,
+            "longitude": 91.86
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let team: HelperTeam = serde_json::from_value(body).expect("parse helper team");
+    assert_eq!(team.team_name, "Sylhet Rescue Alpha");
+    assert_eq!(team.available_capacity(), 10);
+
+    let (status, body) = get_json(&app, "/api/v1/helper-teams?has_capacity=true").await;
+    assert_eq!(status, StatusCode::OK);
+    let teams: Vec<HelperTeam> = serde_json::from_value(body).expect("parse helper teams");
+    assert_eq!(teams.len(), 1, "the available team should be listed");
+    assert_eq!(teams[0].id, team.id);
+}
+
+#[tokio::test]
+async fn helper_allocation_checks_capacity_and_conflicts() {
+    let app = app::router(None);
+
+    let (_, team_body) = post_json(
+        &app,
+        "/api/v1/helper-teams",
+        &json!({
+            "center_id": null,
+            "team_name": "Dhaka Rapid Response",
+            "total_members": 5,
+            "latitude": 23.81,
+            "longitude": 90.41
+        }),
+    )
+    .await;
+    let team: HelperTeam = serde_json::from_value(team_body).expect("parse team");
+
+    let (_, incident_body) = post_json(
+        &app,
+        "/api/v1/incidents",
+        &json!({
+            "title": "High-rise fire in Gulshan",
+            "severity_level": 5,
+            "affected_people": 200,
+            "casualty_count": 3,
+            "latitude": 23.79,
+            "longitude": 90.41
+        }),
+    )
+    .await;
+    let incident_id = incident_body["id"]
+        .as_str()
+        .expect("incident id")
+        .to_string();
+
+    let (status, body) = post_json(
+        &app,
+        "/api/v1/helper-allocations",
+        &json!({
+            "helper_team_id": team.id.to_string(),
+            "incident_id": incident_id,
+            "members_deployed": 5
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let allocation: HelperAllocation = serde_json::from_value(body).expect("parse allocation");
+    assert_eq!(allocation.members_deployed, 5);
+
+    let (conflict_status, _) = post_json(
+        &app,
+        "/api/v1/helper-allocations",
+        &json!({
+            "helper_team_id": team.id.to_string(),
+            "incident_id": team.id.to_string(),
+            "members_deployed": 1
+        }),
+    )
+    .await;
+    assert_eq!(
+        conflict_status,
+        StatusCode::CONFLICT,
+        "over-allocation beyond team capacity must be rejected"
+    );
+}
+
+#[tokio::test]
+async fn assistance_request_lifecycle_works() {
+    let app = app::router(None);
+
+    let (_, resource_body) = post_json(
+        &app,
+        "/api/v1/resources",
+        &json!({
+            "center_id": null,
+            "resource_type": "BOAT",
+            "unit_identifier": "BOAT-07",
+            "latitude": 22.35,
+            "longitude": 91.78
+        }),
+    )
+    .await;
+    let resource_id = resource_body["id"]
+        .as_str()
+        .expect("resource id")
+        .to_string();
+
+    let (status, body) = post_json(
+        &app,
+        "/api/v1/assistance-requests",
+        &json!({
+            "resource_id": resource_id,
+            "issue_description": "Outboard motor failed during flood rescue"
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let request: AssistanceRequest =
+        serde_json::from_value(body).expect("parse assistance request");
+    assert_eq!(request.status, AssistanceStatus::Pending);
+
+    let (status, body) = get_json(&app, "/api/v1/assistance-requests?status=PENDING").await;
+    assert_eq!(status, StatusCode::OK);
+    let requests: Vec<AssistanceRequest> = serde_json::from_value(body).expect("parse requests");
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].id, request.id);
 }
