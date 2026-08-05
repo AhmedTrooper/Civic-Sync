@@ -9,7 +9,7 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use crate::{
     features::{
-        dispatch, health,
+        command_centers, dispatch, health,
         incidents::{self},
         resources::{self},
     },
@@ -23,6 +23,8 @@ pub fn router(database: Option<PgPool>) -> Router {
 
 pub fn router_with_state(state: AppState) -> Router {
     let api = Router::new()
+        .route("/v1/command-centers", get(command_centers::list))
+        .route("/v1/command-centers/{id}", get(command_centers::get_one))
         .route(
             "/v1/incidents",
             post(incidents::create).get(incidents::list),

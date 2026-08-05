@@ -2,6 +2,7 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use chrono::Utc;
 use civic_sync_api::features::{
+    command_centers::CommandCenter,
     dispatch::Recommendation,
     incidents::{Environment, Incident, ResourceNeed, Severity, priority_reasons, priority_score},
     resources::{Resource, ResourceKind, ResourceStatus},
@@ -68,11 +69,62 @@ async fn health_endpoints_respond() {
             Request::builder()
                 .uri("/health/live")
                 .body(Body::empty())
-                .unwrap(),
+                .expect("build request"),
         )
         .await
-        .unwrap();
+        .expect("run request");
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn command_centers_seed_all_8_hubs() {
+    let app = app::router(None);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/command-centers")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let centers: Vec<CommandCenter> = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse command centers");
+    assert_eq!(centers.len(), 8, "expected the 8 divisional hubs");
+    let dhaka = centers
+        .iter()
+        .find(|center| center.is_core_center && center.name == "Dhaka")
+        .expect("Dhaka core center present");
+    assert_eq!(dhaka.latitude, 23.8103);
+    assert_eq!(dhaka.longitude, 90.4125);
+}
+
+#[tokio::test]
+async fn command_centers_filter_by_core_flag() {
+    let app = app::router(None);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/command-centers?is_core_center=true")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let centers: Vec<CommandCenter> = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse command centers");
+    assert_eq!(centers.len(), 1, "only Dhaka is the core center");
+    assert_eq!(centers[0].name, "Dhaka");
 }
 
 #[tokio::test]
