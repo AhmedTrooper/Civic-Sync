@@ -1,6 +1,6 @@
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
 };
@@ -11,100 +11,75 @@ use uuid::Uuid;
 use crate::{error::ApiError, state::AppState};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub enum Severity {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
-impl Severity {
-    pub fn weight(self) -> f64 {
-        match self {
-            Severity::Low => 1.0,
-            Severity::Medium => 2.5,
-            Severity::High => 4.0,
-            Severity::Critical => 6.0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IncidentStatus {
-    Pending,
+    Active,
     Dispatched,
     Resolved,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub enum ResourceNeed {
-    Ambulance,
-    RescueTeam,
-    Helicopter,
-    Hospital,
-    Food,
-    Shelter,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub enum Environment {
-    Normal,
-    Flood,
-    Fire,
-    StructuralCollapse,
-    Weather,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Incident {
     pub id: Uuid,
-    pub region: String,
-    pub severity: Severity,
-    pub casualties: u32,
-    pub affected_population: u32,
-    pub time_sensitivity: u8,
-    pub resource_needs: Vec<ResourceNeed>,
-    pub environment: Environment,
+    pub title: String,
+    pub severity_level: u8,
+    pub affected_people: u32,
+    pub casualty_count: u32,
+    pub latitude: f64,
+    pub longitude: f64,
     pub status: IncidentStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub server_synced_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct CreateIncident {
-    pub region: String,
-    pub severity: Severity,
-    pub casualties: u32,
-    pub affected_population: u32,
-    pub time_sensitivity: u8,
-    pub resource_needs: Vec<ResourceNeed>,
-    pub environment: Environment,
+    pub title: String,
+    pub severity_level: u8,
+    pub affected_people: u32,
+    pub casualty_count: u32,
+    pub latitude: f64,
+    pub longitude: f64,
 }
 
 impl CreateIncident {
     pub fn validate(&self) -> Result<(), ApiError> {
-        if self.region.trim().is_empty() {
-            return Err(ApiError::Validation("region must not be empty".into()));
+        if self.title.trim().is_empty() {
+            return Err(ApiError::Validation("title must not be empty".into()));
         }
-        if self.region.len() > 128 {
-            return Err(ApiError::Validation("region exceeds 128 characters".into()));
-        }
-        if self.time_sensitivity == 0 || self.time_sensitivity > 10 {
+        if self.title.len() > 255 {
             return Err(ApiError::Validation(
-                "time_sensitivity must be between 1 and 10".into(),
+                "title must not exceed 255 characters".into(),
             ));
         }
-        if self.resource_needs.is_empty() {
+        if !(1..=5).contains(&self.severity_level) {
             return Err(ApiError::Validation(
-                "at least one resource_needs entry is required".into(),
+                "severity_level must be between 1 and 5".into(),
+            ));
+        }
+        if !(-90.0..=90.0).contains(&self.latitude) {
+            return Err(ApiError::Validation(
+                "latitude must be between -90 and 90".into(),
+            ));
+        }
+        if !(-180.0..=180.0).contains(&self.longitude) {
+            return Err(ApiError::Validation(
+                "longitude must be between -180 and 180".into(),
             ));
         }
         Ok(())
     }
+}
+
+/// Query-parameter filters for the single `GET /incidents` route.
+#[derive(Debug, Default, Deserialize)]
+pub struct ListIncidentsQuery {
+    pub status: Option<IncidentStatus>,
+    pub severity_level: Option<u8>,
+    pub min_casualties: Option<u32>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
 }
 
 pub async fn create(
@@ -115,16 +90,16 @@ pub async fn create(
     let now = Utc::now();
     let incident = Incident {
         id: Uuid::new_v4(),
-        region: input.region.trim().to_string(),
-        severity: input.severity,
-        casualties: input.casualties,
-        affected_population: input.affected_population,
-        time_sensitivity: input.time_sensitivity,
-        resource_needs: input.resource_needs,
-        environment: input.environment,
-        status: IncidentStatus::Pending,
+        title: input.title.trim().to_string(),
+        severity_level: input.severity_level,
+        affected_people: input.affected_people,
+        casualty_count: input.casualty_count,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        status: IncidentStatus::Active,
         created_at: now,
         updated_at: now,
+        server_synced_at: None,
     };
 
     if let Some(pool) = &state.database {
@@ -139,14 +114,20 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(incident)))
 }
 
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Incident>>, ApiError> {
+pub async fn list(
+    State(state): State<AppState>,
+    Query(query): Query<ListIncidentsQuery>,
+) -> Result<Json<Vec<Incident>>, ApiError> {
     let items = match &state.database {
-        Some(pool) => list_postgres(pool).await?,
+        Some(pool) => list_postgres(pool, &query).await?,
         None => state
             .incidents
             .read()
             .await
             .values()
+            .filter(|&incident| query.matches(incident))
+            .skip(query.offset.unwrap_or(0) as usize)
+            .take(query.limit.unwrap_or(i64::MAX) as usize)
             .cloned()
             .collect::<Vec<_>>(),
     };
@@ -170,60 +151,74 @@ pub async fn get_one(
     Ok(Json(incident))
 }
 
+impl ListIncidentsQuery {
+    fn matches(&self, incident: &Incident) -> bool {
+        if let Some(status) = self.status
+            && incident.status != status
+        {
+            return false;
+        }
+        if let Some(severity) = self.severity_level
+            && incident.severity_level != severity
+        {
+            return false;
+        }
+        if let Some(min_casualties) = self.min_casualties
+            && incident.casualty_count < min_casualties
+        {
+            return false;
+        }
+        true
+    }
+
+    fn validate(&self) -> Result<(), ApiError> {
+        if self.limit.is_some_and(|value| value <= 0) {
+            return Err(ApiError::Validation("limit must be positive".into()));
+        }
+        if self.offset.is_some_and(|value| value < 0) {
+            return Err(ApiError::Validation("offset must be non-negative".into()));
+        }
+        if let Some(severity) = self.severity_level
+            && !(1..=5).contains(&severity)
+        {
+            return Err(ApiError::Validation(
+                "severity_level must be between 1 and 5".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 pub fn priority_score(incident: &Incident) -> f64 {
-    let severity = incident.severity.weight();
-    let casualties = incident.casualties as f64;
-    let population = incident.affected_population as f64;
-    let time = incident.time_sensitivity as f64;
-    let environment = match incident.environment {
-        Environment::Normal => 1.0,
-        Environment::Weather => 1.15,
-        Environment::Fire => 1.25,
-        Environment::Flood => 1.3,
-        Environment::StructuralCollapse => 1.45,
-    };
-    ((severity * 4.0) + (casualties * 0.4) + (population * 0.05) + (time * 1.5)) * environment
+    let severity = f64::from(incident.severity_level);
+    let casualties = f64::from(incident.casualty_count);
+    let affected = f64::from(incident.affected_people);
+    (severity * 10.0) + (casualties * 0.5) + (affected * 0.02)
 }
 
 pub fn priority_reasons(incident: &Incident) -> Vec<String> {
-    let mut reasons: Vec<String> = Vec::new();
+    let mut reasons = Vec::new();
     reasons.push(format!(
-        "severity {} contributes a base weight of {:.2}",
-        serde_json::to_value(incident.severity)
-            .ok()
-            .and_then(|value| value.as_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| "unknown".into()),
-        incident.severity.weight() * 4.0
+        "severity level {} of 5 contributes a base weight of {:.2}",
+        incident.severity_level,
+        f64::from(incident.severity_level) * 10.0
     ));
-    if incident.casualties > 0 {
+    if incident.casualty_count > 0 {
         reasons.push(format!(
-            "{} casualty report increases urgency",
-            incident.casualties
+            "{} casualties increase urgency",
+            incident.casualty_count
         ));
     }
-    if incident.affected_population > 0 {
+    if incident.affected_people > 0 {
         reasons.push(format!(
             "{} people affected, expand coordination scope",
-            incident.affected_population
+            incident.affected_people
         ));
     }
     reasons.push(format!(
-        "time sensitivity is {}/10",
-        incident.time_sensitivity
+        "located at ({:.4}, {:.4})",
+        incident.latitude, incident.longitude
     ));
-    reasons.push(format!(
-        "environment {:?} escalates risk profile",
-        incident.environment
-    ));
-    if !incident.resource_needs.is_empty() {
-        let needs: Vec<String> = incident
-            .resource_needs
-            .iter()
-            .filter_map(|need| serde_json::to_value(need).ok())
-            .filter_map(|value| value.as_str().map(|s| s.to_string()))
-            .collect();
-        reasons.push(format!("requires {}", needs.join(", ")));
-    }
     reasons
 }
 
@@ -233,49 +228,81 @@ pub(crate) async fn insert_postgres(
 ) -> Result<(), ApiError> {
     sqlx::query(
         r#"INSERT INTO incidents (
-            id, region, severity, casualties, affected_population,
-            time_sensitivity, resource_needs, environment, status, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"#,
+            id, title, severity_level, affected_people, casualty_count,
+            location, status, created_at, updated_at, server_synced_at
+        ) VALUES ($1, $2, $3, $4, $5,
+                  ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
+                  $8, $9, $10, $11)"#,
     )
     .bind(incident.id)
-    .bind(&incident.region)
-    .bind(serde_json::to_value(incident.severity).unwrap())
-    .bind(incident.casualties as i32)
-    .bind(incident.affected_population as i32)
-    .bind(incident.time_sensitivity as i16)
-    .bind(
-        incident
-            .resource_needs
-            .iter()
-            .map(|value| serde_json::to_value(value).unwrap())
-            .collect::<Vec<_>>(),
-    )
-    .bind(serde_json::to_value(incident.environment).unwrap())
-    .bind(serde_json::to_value(incident.status).unwrap())
+    .bind(&incident.title)
+    .bind(i32::from(incident.severity_level))
+    .bind(incident.affected_people as i32)
+    .bind(incident.casualty_count as i32)
+    .bind(incident.longitude)
+    .bind(incident.latitude)
+    .bind(serde_json::to_value(incident.status).map_err(|err| ApiError::Internal(err.to_string()))?)
     .bind(incident.created_at)
     .bind(incident.updated_at)
+    .bind(incident.server_synced_at)
     .execute(pool)
     .await?;
     Ok(())
 }
 
-pub(crate) async fn list_postgres(pool: &sqlx::PgPool) -> Result<Vec<Incident>, ApiError> {
-    let rows = sqlx::query_as::<_, IncidentRow>(
-        r#"SELECT id, region, severity, casualties, affected_population,
-                  time_sensitivity, resource_needs, environment, status,
-                  created_at, updated_at
-           FROM incidents ORDER BY created_at ASC"#,
-    )
-    .fetch_all(pool)
-    .await?;
-    Ok(rows.into_iter().map(Incident::from).collect::<Vec<_>>())
+pub(crate) async fn list_postgres(
+    pool: &sqlx::PgPool,
+    query: &ListIncidentsQuery,
+) -> Result<Vec<Incident>, ApiError> {
+    query.validate()?;
+    let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new(
+        r#"SELECT id, title, severity_level, affected_people, casualty_count,
+                  ST_Y(location::geometry) AS latitude,
+                  ST_X(location::geometry) AS longitude,
+                  status, created_at, updated_at, server_synced_at
+           FROM incidents"#,
+    );
+    builder.push(" WHERE 1 = 1");
+    if let Some(status) = query.status {
+        builder.push(" AND status = ");
+        builder.push_bind(
+            serde_json::to_value(status).map_err(|err| ApiError::Internal(err.to_string()))?,
+        );
+    }
+    if let Some(severity) = query.severity_level {
+        builder.push(" AND severity_level = ");
+        builder.push_bind(i32::from(severity));
+    }
+    if let Some(min_casualties) = query.min_casualties {
+        builder.push(" AND casualty_count >= ");
+        builder.push_bind(min_casualties as i32);
+    }
+    builder.push(" ORDER BY created_at ASC");
+    if let Some(limit) = query.limit {
+        builder.push(" LIMIT ");
+        builder.push_bind(limit);
+    }
+    if let Some(offset) = query.offset {
+        builder.push(" OFFSET ");
+        builder.push_bind(offset);
+    }
+    let rows = builder
+        .build_query_as::<IncidentRow>()
+        .fetch_all(pool)
+        .await?;
+    Ok(rows.into_iter().map(Incident::from).collect())
+}
+
+pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<Incident>, ApiError> {
+    list_postgres(pool, &ListIncidentsQuery::default()).await
 }
 
 pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Incident, ApiError> {
     let row = sqlx::query_as::<_, IncidentRow>(
-        r#"SELECT id, region, severity, casualties, affected_population,
-                  time_sensitivity, resource_needs, environment, status,
-                  created_at, updated_at
+        r#"SELECT id, title, severity_level, affected_people, casualty_count,
+                  ST_Y(location::geometry) AS latitude,
+                  ST_X(location::geometry) AS longitude,
+                  status, created_at, updated_at, server_synced_at
            FROM incidents WHERE id = $1"#,
     )
     .bind(id)
@@ -288,40 +315,33 @@ pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Inci
 #[derive(sqlx::FromRow)]
 pub struct IncidentRow {
     pub id: Uuid,
-    pub region: String,
-    pub severity: serde_json::Value,
-    pub casualties: i32,
-    pub affected_population: i32,
-    pub time_sensitivity: i16,
-    pub resource_needs: Vec<serde_json::Value>,
-    pub environment: serde_json::Value,
+    pub title: String,
+    pub severity_level: i32,
+    pub affected_people: i32,
+    pub casualty_count: i32,
+    pub latitude: f64,
+    pub longitude: f64,
     pub status: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub server_synced_at: Option<DateTime<Utc>>,
 }
 
 impl From<IncidentRow> for Incident {
     fn from(row: IncidentRow) -> Self {
-        let severity = serde_json::from_value(row.severity).unwrap_or(Severity::Low);
-        let environment = serde_json::from_value(row.environment).unwrap_or(Environment::Normal);
-        let status = serde_json::from_value(row.status).unwrap_or(IncidentStatus::Pending);
-        let resource_needs = row
-            .resource_needs
-            .into_iter()
-            .filter_map(|value| serde_json::from_value(value).ok())
-            .collect();
+        let status = serde_json::from_value(row.status).unwrap_or(IncidentStatus::Active);
         Incident {
             id: row.id,
-            region: row.region,
-            severity,
-            casualties: row.casualties as u32,
-            affected_population: row.affected_population as u32,
-            time_sensitivity: row.time_sensitivity as u8,
-            resource_needs,
-            environment,
+            title: row.title,
+            severity_level: row.severity_level as u8,
+            affected_people: row.affected_people as u32,
+            casualty_count: row.casualty_count as u32,
+            latitude: row.latitude,
+            longitude: row.longitude,
             status,
             created_at: row.created_at,
             updated_at: row.updated_at,
+            server_synced_at: row.server_synced_at,
         }
     }
 }

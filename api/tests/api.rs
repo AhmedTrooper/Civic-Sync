@@ -4,8 +4,8 @@ use chrono::Utc;
 use civic_sync_api::features::{
     command_centers::CommandCenter,
     dispatch::Recommendation,
-    incidents::{Environment, Incident, ResourceNeed, Severity, priority_reasons, priority_score},
-    resources::{Resource, ResourceKind, ResourceStatus},
+    incidents::{Incident, IncidentStatus, priority_reasons, priority_score},
+    resources::{Resource, ResourceStatus, ResourceType},
 };
 use civic_sync_api::{app, state::AppState};
 use serde_json::{Value, json};
@@ -16,29 +16,34 @@ fn sample_incident() -> Incident {
     let now = Utc::now();
     Incident {
         id: Uuid::new_v4(),
-        region: "Mirpur".into(),
-        severity: Severity::High,
-        casualties: 4,
-        affected_population: 120,
-        time_sensitivity: 8,
-        resource_needs: vec![ResourceNeed::Ambulance, ResourceNeed::RescueTeam],
-        environment: Environment::Flood,
-        status: civic_sync_api::features::incidents::IncidentStatus::Pending,
+        title: "Flooding in Mirpur".into(),
+        severity_level: 4,
+        affected_people: 120,
+        casualty_count: 4,
+        latitude: 23.78,
+        longitude: 90.37,
+        status: IncidentStatus::Active,
         created_at: now,
         updated_at: now,
+        server_synced_at: None,
     }
 }
 
 fn sample_resource() -> Resource {
     Resource {
         id: Uuid::new_v4(),
-        kind: ResourceKind::Ambulance,
-        capacity: 6,
+        center_id: None,
+        incident_id: None,
+        resource_type: ResourceType::Ambulance,
+        unit_identifier: "AMB-001".into(),
+        status: ResourceStatus::Available,
+        distance_passed_km: 0.0,
+        distance_remaining_km: 0.0,
         latitude: 23.8103,
         longitude: 90.4125,
-        status: ResourceStatus::Available,
-        current_incident_id: None,
+        created_at: Utc::now(),
         updated_at: Utc::now(),
+        server_synced_at: None,
     }
 }
 
@@ -46,17 +51,26 @@ fn sample_resource() -> Resource {
 fn priority_score_combines_inputs() {
     let incident = sample_incident();
     let score = priority_score(&incident);
-    assert!(score > 30.0, "expected high score, got {score}");
+    assert!(score > 40.0, "expected a high score, got {score}");
     let reasons = priority_reasons(&incident);
     assert!(reasons.iter().any(|reason| reason.contains("severity")));
-    assert!(reasons.iter().any(|reason| reason.contains("casualty")));
+    assert!(reasons.iter().any(|reason| reason.contains("casualties")));
 }
 
 #[test]
-fn priority_score_escalates_environment() {
+fn priority_score_increases_with_severity() {
     let mut incident = sample_incident();
     let baseline = priority_score(&incident);
-    incident.environment = Environment::StructuralCollapse;
+    incident.severity_level = 5;
+    let escalated = priority_score(&incident);
+    assert!(escalated > baseline);
+}
+
+#[test]
+fn priority_score_ranks_higher_with_more_casualties() {
+    let mut incident = sample_incident();
+    let baseline = priority_score(&incident);
+    incident.casualty_count = 50;
     let escalated = priority_score(&incident);
     assert!(escalated > baseline);
 }
@@ -131,13 +145,12 @@ async fn command_centers_filter_by_core_flag() {
 async fn incident_lifecycle_works() {
     let app = app::router(None);
     let payload = json!({
-        "region": "Uttara",
-        "severity": "critical",
-        "casualties": 7,
-        "affected_population": 250,
-        "time_sensitivity": 9,
-        "resource_needs": ["ambulance", "hospital"],
-        "environment": "fire"
+        "title": "Structural collapse in Uttara",
+        "severity_level": 5,
+        "affected_people": 250,
+        "casualty_count": 7,
+        "latitude": 23.87,
+        "longitude": 90.40
     });
 
     let response = app
@@ -148,29 +161,32 @@ async fn incident_lifecycle_works() {
                 .uri("/api/v1/incidents")
                 .header("content-type", "application/json")
                 .body(Body::from(payload.to_string()))
-                .unwrap(),
+                .expect("build request"),
         )
         .await
-        .unwrap();
+        .expect("run request");
     assert_eq!(response.status(), StatusCode::CREATED);
 
     let list = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/incidents")
+                .uri("/api/v1/incidents?severity_level=5")
                 .body(Body::empty())
-                .unwrap(),
+                .expect("build request"),
         )
         .await
-        .unwrap();
+        .expect("run request");
     assert_eq!(list.status(), StatusCode::OK);
     let body: Vec<Value> = serde_json::from_slice(
         &axum::body::to_bytes(list.into_body(), 1_000_000)
             .await
-            .unwrap(),
+            .expect("read body"),
     )
-    .unwrap();
-    assert!(!body.is_empty());
+    .expect("parse incidents");
+    assert!(
+        !body.is_empty(),
+        "filtered list should contain the incident"
+    );
 }
 
 #[tokio::test]
@@ -184,7 +200,7 @@ async fn dispatch_recommendations_rank_incidents() {
         let mut incidents = state.incidents.write().await;
         let low = Incident {
             id: Uuid::new_v4(),
-            severity: Severity::Low,
+            severity_level: 1,
             ..sample_incident()
         };
         let high = sample_incident();
@@ -198,19 +214,63 @@ async fn dispatch_recommendations_rank_incidents() {
                 .method("POST")
                 .uri("/api/v1/dispatch/recommendations")
                 .body(Body::empty())
-                .unwrap(),
+                .expect("build request"),
         )
         .await
-        .unwrap();
+        .expect("run request");
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value = serde_json::from_slice(
         &axum::body::to_bytes(response.into_body(), 1_000_000)
             .await
-            .unwrap(),
+            .expect("read body"),
     )
-    .unwrap();
+    .expect("parse recommendations");
     let recommendations: Vec<Recommendation> =
         serde_json::from_value(body["recommendations"].clone()).unwrap();
     assert_eq!(recommendations.len(), 2);
-    assert!(recommendations[0].priority_score >= recommendations[1].priority_score);
+    assert!(
+        recommendations[0].priority_score >= recommendations[1].priority_score,
+        "higher-severity incident should rank first"
+    );
+    assert!(
+        recommendations
+            .iter()
+            .all(|r| r.travel_distance_km.is_some()),
+        "each recommendation should include a travel distance"
+    );
+    assert!(
+        recommendations
+            .iter()
+            .all(|r| r.nearest_resource_id.is_some()),
+        "each recommendation should reference the single available resource"
+    );
+}
+
+#[tokio::test]
+async fn incident_validation_rejects_bad_severity() {
+    let app = app::router(None);
+    let payload = json!({
+        "title": "Out-of-range severity",
+        "severity_level": 9,
+        "affected_people": 10,
+        "casualty_count": 0,
+        "latitude": 23.8,
+        "longitude": 90.4
+    });
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/incidents")
+                .header("content-type", "application/json")
+                .body(Body::from(payload.to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(
+        response.status(),
+        StatusCode::BAD_REQUEST,
+        "severity_level outside 1..=5 must be rejected"
+    );
 }
