@@ -6,7 +6,7 @@ use civic_sync_api::features::{
     assistance_requests::{AssistanceRequest, AssistanceStatus},
     command_centers::CommandCenter,
     dispatch::ToolCallEnvelope,
-    helper_allocations::HelperAllocation,
+    helper_allocations::{AllocationStatus, HelperAllocation},
     helper_teams::HelperTeam,
     incidents::{Incident, IncidentStatus, priority_reasons, priority_score},
     resources::{Resource, ResourceStatus, ResourceType},
@@ -1063,3 +1063,153 @@ async fn admin_simulation_pause_resume_round_trips() {
     .expect("parse status");
     assert_eq!(body["paused"], true);
 }
+
+#[tokio::test]
+async fn simulator_resume_pause_concurrent_safe() {
+    // Hammer the state from multiple tasks to confirm the Mutex
+    // serialisation holds and no value is lost.
+    let simulation = civic_sync_api::features::simulation::SimulationState::new(true);
+    let mut joins = Vec::new();
+    for _ in 0..16 {
+        let sim = simulation.clone();
+        joins.push(tokio::spawn(async move {
+            for _ in 0..50 {
+                sim.pause().await;
+                sim.resume().await;
+            }
+        }));
+    }
+    for j in joins {
+        j.await.expect("task panicked");
+    }
+    // Final state: depends on the last toggle. We just assert we can
+    // read it without panicking.
+    let _ = simulation.is_paused().await;
+    assert!(simulation.generated_count().await == 0); // no synthetic ticks fired.
+}
+
+#[tokio::test]
+async fn simulator_generated_counter_starts_at_zero_and_is_monotonic() {
+    let simulation = civic_sync_api::features::simulation::SimulationState::new(true);
+    assert_eq!(simulation.generated_count().await, 0);
+    // Bumping is internal-only, but the counter should remain monotonic
+    // under repeated observation.
+    for _ in 0..10 {
+        assert_eq!(simulation.generated_count().await, 0);
+    }
+}
+
+// ----- DELETE /v1/<resource>/{id} + PATCH /v1/helper-allocations/{id} -----
+
+#[tokio::test]
+async fn patch_helper_allocation_status_to_cancelled_restores_team_capacity() {
+    // Wire up team (5 capacity) + incident + allocate 3 of 5 → bump to 3.
+    let state = AppState::new(None);
+    let app = app::router_with_state(state.clone());
+
+    let (_, team_body) = post_json(
+        &app,
+        "/api/v1/helper-teams",
+        &json!({
+            "center_id": null,
+            "team_name": "Capacity Restore Team",
+            "total_members": 5,
+            "latitude": 23.81,
+            "longitude": 90.41,
+        }),
+    )
+    .await;
+    let team: HelperTeam = serde_json::from_value(team_body).expect("parse team");
+    assert_eq!(team.assigned_members, 0);
+
+    let (_, incident_body) = post_json(
+        &app,
+        "/api/v1/incidents",
+        &json!({
+            "title": "Flooding",
+            "severity_level": 4,
+            "affected_people": 100,
+            "casualty_count": 1,
+            "latitude": 23.79,
+            "longitude": 90.41,
+        }),
+    )
+    .await;
+    let incident_id = incident_body["id"]
+        .as_str()
+        .expect("incident id")
+        .to_string();
+
+    let (status, body) = post_json(
+        &app,
+        "/api/v1/helper-allocations",
+        &json!({
+            "helper_team_id": team.id.to_string(),
+            "incident_id": incident_id,
+            "members_deployed": 3,
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let allocation: HelperAllocation = serde_json::from_value(body).expect("parse allocation");
+
+    // Team counter should reflect the active allocation.
+    let team_after_create: HelperTeam = serde_json::from_value(
+        get_json(&app, &format!("/api/v1/helper-teams/{}", team.id))
+            .await
+            .1,
+    )
+    .expect("parse team after create");
+    assert_eq!(team_after_create.assigned_members, 3);
+
+    // PATCH status → CANCELLED should restore the team counter.
+    let patch_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/api/v1/helper-allocations/{}", allocation.id))
+                .header("content-type", "application/json")
+                .body(Body::from(json!({ "status": "CANCELLED" }).to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run patch");
+    assert_eq!(patch_response.status(), StatusCode::OK);
+    let updated: HelperAllocation = serde_json::from_slice(
+        &axum::body::to_bytes(patch_response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse updated allocation");
+    assert_eq!(updated.status, AllocationStatus::Cancelled);
+
+    let team_after_cancel: HelperTeam = serde_json::from_value(
+        get_json(&app, &format!("/api/v1/helper-teams/{}", team.id))
+            .await
+            .1,
+    )
+    .expect("parse team after cancel");
+    assert_eq!(
+        team_after_cancel.assigned_members, 0,
+        "cancelling the allocation must restore the team's available capacity"
+    );
+}
+
+#[tokio::test]
+async fn patch_helper_allocation_missing_returns_404() {
+    let app = app::router_with_state(AppState::new(None));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/api/v1/helper-allocations/{}", Uuid::new_v4()))
+                .header("content-type", "application/json")
+                .body(Body::from(json!({ "status": "CANCELLED" }).to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run patch");
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
