@@ -10,6 +10,7 @@ import {
 	Truck,
 	MapPin,
 	ShieldAlert,
+	Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAdminStore } from "../store/adminStore";
@@ -23,8 +24,16 @@ function AdminPanel() {
 		"SIMULATION" | "ASSETS" | "CENTERS"
 	>("SIMULATION");
 
-	const { centers, incidents, resources, simStatus, fetchData } =
-		useAdminStore();
+	const {
+		centers,
+		incidents,
+		resources,
+		simStatus,
+		fetchData,
+		deleteIncident,
+		deleteResource,
+		deleteCenter,
+	} = useAdminStore();
 
 	const [editingIncident, setEditingIncident] = useState<string | null>(null);
 	const [editIncidentForm, setEditIncidentForm] = useState({
@@ -516,21 +525,35 @@ function AdminPanel() {
 																</span>
 															</p>
 														</div>
-														<button
-															type="button"
-															onClick={() => {
-																setEditingIncident(inc.id);
-																setEditIncidentForm({
-																	severity_level: inc.severity_level,
-																	affected_people: inc.affected_people,
-																	casualty_count: inc.casualty_count,
-																	status: inc.status,
-																});
-															}}
-															className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
-														>
-															Edit
-														</button>
+														<div className="flex items-center gap-2">
+															<button
+																type="button"
+																onClick={() => {
+																	setEditingIncident(inc.id);
+																	setEditIncidentForm({
+																		severity_level: inc.severity_level,
+																		affected_people: inc.affected_people,
+																		casualty_count: inc.casualty_count,
+																		status: inc.status,
+																	});
+																}}
+																className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+															>
+																Edit
+															</button>
+															<button
+																type="button"
+																onClick={() => {
+																	if (confirm("Delete this incident?")) {
+																		deleteIncident(inc.id);
+																	}
+																}}
+																className="p-1 text-rose-500 hover:text-rose-600 transition-colors"
+																title="Delete Incident"
+															>
+																<Trash2 className="w-4 h-4" />
+															</button>
+														</div>
 													</div>
 												)}
 											</div>
@@ -813,6 +836,18 @@ function AdminPanel() {
 																>
 																	Edit
 																</button>
+																<button
+																	type="button"
+																	onClick={() => {
+																		if (confirm("Delete this resource?")) {
+																			deleteResource(res.id);
+																		}
+																	}}
+																	className="p-1 text-rose-500 hover:text-rose-600 transition-colors ml-1"
+																	title="Delete Resource"
+																>
+																	<Trash2 className="w-3.5 h-3.5" />
+																</button>
 															</p>
 														</>
 													)}
@@ -855,11 +890,23 @@ function AdminPanel() {
 													? "CORE HUB"
 													: "DIVISIONAL CENTER"}
 											</p>
-											<div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-												<p>
+											<div className="text-sm text-slate-600 dark:text-slate-400 space-y-1 flex items-center justify-between mt-3">
+												<p className="text-xs">
 													Location: {center.latitude.toFixed(4)},{" "}
 													{center.longitude.toFixed(4)}
 												</p>
+												<button
+													type="button"
+													onClick={() => {
+														if (confirm("Delete this command center?")) {
+															deleteCenter(center.id);
+														}
+													}}
+													className="p-1 text-rose-500 hover:text-rose-600 transition-colors"
+													title="Delete Center"
+												>
+													<Trash2 className="w-4 h-4" />
+												</button>
 											</div>
 										</div>
 									))}

@@ -53,14 +53,65 @@ interface AdminState {
 	simStatus: SimulationStatus | null;
 	isLoading: boolean;
 	fetchData: () => Promise<void>;
+	deleteIncident: (id: string) => Promise<boolean>;
+	deleteResource: (id: string) => Promise<boolean>;
+	deleteCenter: (id: string) => Promise<boolean>;
 }
 
-export const useAdminStore = create<AdminState>((set) => ({
+export const useAdminStore = create<AdminState>((set, get) => ({
 	centers: [],
 	incidents: [],
 	resources: [],
 	simStatus: null,
 	isLoading: false,
+
+	deleteIncident: async (id: string) => {
+		try {
+			const res = await fetch(`http://localhost:8080/api/v1/incidents/${id}`, {
+				method: "DELETE",
+				headers: { "x-role": "admin" },
+			});
+			if (res.ok || res.status === 204) {
+				set({ incidents: get().incidents.filter((i) => i.id !== id) });
+				return true;
+			}
+		} catch (_e) {
+			// ignore
+		}
+		return false;
+	},
+
+	deleteResource: async (id: string) => {
+		try {
+			const res = await fetch(`http://localhost:8080/api/v1/resources/${id}`, {
+				method: "DELETE",
+				headers: { "x-role": "admin" },
+			});
+			if (res.ok || res.status === 204) {
+				set({ resources: get().resources.filter((r) => r.id !== id) });
+				return true;
+			}
+		} catch (_e) {
+			// ignore
+		}
+		return false;
+	},
+
+	deleteCenter: async (id: string) => {
+		try {
+			const res = await fetch(`http://localhost:8080/api/v1/centers/${id}`, {
+				method: "DELETE",
+				headers: { "x-role": "admin" },
+			});
+			if (res.ok || res.status === 204) {
+				set({ centers: get().centers.filter((c) => c.id !== id) });
+				return true;
+			}
+		} catch (_e) {
+			// ignore
+		}
+		return false;
+	},
 
 	fetchData: async () => {
 		set({ isLoading: true });
