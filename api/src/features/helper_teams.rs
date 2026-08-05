@@ -317,6 +317,29 @@ pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<HelperT
     Ok(rows.into_iter().map(HelperTeam::from).collect())
 }
 
+/// Bump the assigned_members counter inside an existing transaction. The
+/// dispatcher pre-screens against `HelperTeam::available_capacity()` so
+/// the table CHECK constraint (assigned_members <= total_members) holds.
+#[allow(dead_code)] // consumed by src/features/dispatch.rs
+pub(crate) async fn bump_assigned_postgres_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    team_id: Uuid,
+    delta: u32,
+    now: DateTime<Utc>,
+) -> Result<(), ApiError> {
+    sqlx::query(
+        r#"UPDATE helper_teams
+           SET assigned_members = assigned_members + $1, updated_at = $2
+           WHERE id = $3"#,
+    )
+    .bind(delta as i32)
+    .bind(now)
+    .bind(team_id)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
 pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<HelperTeam, ApiError> {
     let row = sqlx::query_as::<_, HelperTeamRow>(
         r#"SELECT id, center_id, team_name, total_members, assigned_members, status,

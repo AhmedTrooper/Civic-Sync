@@ -234,30 +234,6 @@ pub(crate) async fn insert_postgres_tx(
     })
 }
 
-/// Bump a helper team's assigned_members counter inside an existing transaction.
-/// Runs the spec CHECK constraint (assigned_members <= total_members) via the
-/// database itself; the engine must pre-screen against
-/// `HelperTeam::available_capacity()` to avoid hitting that violation.
-#[allow(dead_code)] // consumed by src/features/dispatch.rs
-pub(crate) async fn bump_assigned_postgres_tx(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    team_id: Uuid,
-    delta: u32,
-    now: DateTime<Utc>,
-) -> Result<(), ApiError> {
-    sqlx::query(
-        r#"UPDATE helper_teams
-           SET assigned_members = assigned_members + $1, updated_at = $2
-           WHERE id = $3"#,
-    )
-    .bind(delta as i32)
-    .bind(now)
-    .bind(team_id)
-    .execute(&mut **tx)
-    .await?;
-    Ok(())
-}
-
 async fn create_postgres(
     pool: &sqlx::PgPool,
     input: &CreateHelperAllocation,
@@ -281,7 +257,13 @@ async fn create_postgres(
 
     let now = Utc::now();
     let allocation = insert_postgres_tx(&mut tx, input, AllocationStatus::EnRoute, now).await?;
-    bump_assigned_postgres_tx(&mut tx, input.helper_team_id, input.members_deployed, now).await?;
+    crate::features::helper_teams::bump_assigned_postgres_tx(
+        &mut tx,
+        input.helper_team_id,
+        input.members_deployed,
+        now,
+    )
+    .await?;
     tx.commit().await?;
 
     let stored = fetch_postgres(pool, allocation.id).await?;
