@@ -4,6 +4,7 @@ use chrono::Utc;
 use civic_sync_api::features::{
     assistance_requests::{AssistanceRequest, AssistanceStatus},
     command_centers::CommandCenter,
+    dispatch::ToolCallEnvelope,
     helper_allocations::HelperAllocation,
     helper_teams::HelperTeam,
     incidents::{Incident, IncidentStatus, priority_reasons, priority_score},
@@ -199,6 +200,8 @@ async fn dispatch_recommendations_rank_incidents() {
         let mut resources = state.resources.write().await;
         resources.insert(sample_resource().id, sample_resource());
     }
+    let low_id;
+    let high_id;
     {
         let mut incidents = state.incidents.write().await;
         let low = Incident {
@@ -207,6 +210,8 @@ async fn dispatch_recommendations_rank_incidents() {
             ..sample_incident()
         };
         let high = sample_incident();
+        low_id = low.id;
+        high_id = high.id;
         incidents.insert(low.id, low);
         incidents.insert(high.id, high);
     }
@@ -228,11 +233,25 @@ async fn dispatch_recommendations_rank_incidents() {
             .expect("read body"),
     )
     .expect("parse recommendations");
-    let recommendations = body["recommendations"]
-        .as_array()
-        .expect("recommendations is an array");
-    assert_eq!(recommendations.len(), 2);
-    // Commit 7 will replace this with a typed assertion on ToolCallEnvelope.
+    let envelopes: Vec<ToolCallEnvelope> =
+        serde_json::from_value(body["recommendations"].clone()).expect("parse envelopes");
+    assert_eq!(envelopes.len(), 2);
+    assert!(
+        envelopes
+            .iter()
+            .all(|e| e.tool_name == "dispatch_multi_center_response"),
+        "every envelope must use the spec tool_name"
+    );
+    assert!(
+        envelopes
+            .iter()
+            .all(|e| !e.arguments.primary_center_id.is_nil()),
+        "every envelope must select a primary center"
+    );
+    // The higher-severity incident must rank first; the engine sorts by priority_score DESC.
+    let expected_order = vec![high_id, low_id];
+    let actual_order: Vec<Uuid> = envelopes.iter().map(|e| e.arguments.incident_id).collect();
+    assert_eq!(actual_order, expected_order);
 }
 
 #[tokio::test]
@@ -438,4 +457,121 @@ async fn assistance_request_lifecycle_works() {
     let requests: Vec<AssistanceRequest> = serde_json::from_value(body).expect("parse requests");
     assert_eq!(requests.len(), 1);
     assert_eq!(requests[0].id, request.id);
+}
+
+#[tokio::test]
+async fn dispatch_creates_helper_allocation_and_marks_resource_en_route() {
+    let state = AppState::new(None);
+    let core = state
+        .command_centers
+        .read()
+        .await
+        .values()
+        .find(|c| c.is_core_center)
+        .cloned()
+        .expect("Dhaka core center is seeded");
+
+    let (_, incident_body) = post_json(
+        &app::router_with_state(state.clone()),
+        "/api/v1/incidents",
+        &json!({
+            "title": "High-rise fire in Gulshan",
+            "severity_level": 5,
+            "affected_people": 200,
+            "casualty_count": 3,
+            "latitude": 23.79,
+            "longitude": 90.41,
+            "required_resource_types": ["AMBULANCE"]
+        }),
+    )
+    .await;
+    let incident_id = incident_body["id"]
+        .as_str()
+        .expect("incident id")
+        .to_string();
+
+    let (_, resource_body) = post_json(
+        &app::router_with_state(state.clone()),
+        "/api/v1/resources",
+        &json!({
+            "center_id": core.id,
+            "resource_type": "AMBULANCE",
+            "unit_identifier": "AMB-007",
+            "latitude": 23.81,
+            "longitude": 90.41
+        }),
+    )
+    .await;
+    let resource_id = resource_body["id"]
+        .as_str()
+        .expect("resource id")
+        .to_string();
+
+    let (_, team_body) = post_json(
+        &app::router_with_state(state.clone()),
+        "/api/v1/helper-teams",
+        &json!({
+            "center_id": core.id,
+            "team_name": "Dhaka Rapid Response",
+            "total_members": 5,
+            "latitude": 23.81,
+            "longitude": 90.41
+        }),
+    )
+    .await;
+    let team_id = team_body["id"].as_str().expect("team id").to_string();
+
+    // Trigger dispatch.
+    let app = app::router_with_state(state.clone());
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/dispatch/recommendations")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Resource mutated to EN_ROUTE and linked to the incident.
+    let (status, body) = get_json(
+        &app::router_with_state(state.clone()),
+        &format!("/api/v1/resources/{resource_id}"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let resource: Resource = serde_json::from_value(body).expect("parse resource");
+    assert_eq!(resource.status, ResourceStatus::EnRoute);
+    assert_eq!(
+        resource.incident_id,
+        Some(Uuid::parse_str(&incident_id).unwrap())
+    );
+
+    // Helper team assigned_members bumped.
+    let (status, body) = get_json(
+        &app::router_with_state(state.clone()),
+        &format!("/api/v1/helper-teams/{team_id}"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let team: HelperTeam = serde_json::from_value(body).expect("parse team");
+    assert_eq!(team.assigned_members, 5);
+
+    // helper_allocations row created.
+    let (status, body) = get_json(
+        &app::router_with_state(state.clone()),
+        "/api/v1/helper-allocations",
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let allocations: Vec<HelperAllocation> =
+        serde_json::from_value(body).expect("parse allocations");
+    assert_eq!(allocations.len(), 1);
+    assert_eq!(
+        allocations[0].incident_id,
+        Some(Uuid::parse_str(&incident_id).unwrap())
+    );
 }

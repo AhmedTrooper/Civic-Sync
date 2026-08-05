@@ -1,6 +1,6 @@
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use chrono::Utc;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
@@ -19,13 +19,13 @@ use crate::{
 /// data.md §7 — the named tool-call the Rig AI engine will emit.
 pub const TOOL_NAME: &str = "dispatch_multi_center_response";
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ToolCallEnvelope {
-    pub tool_name: &'static str,
+    pub tool_name: String,
     pub arguments: DispatchArguments,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DispatchArguments {
     pub incident_id: Uuid,
     pub primary_center_id: Uuid,
@@ -35,7 +35,7 @@ pub struct DispatchArguments {
     pub justification: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AllocationEntry {
     pub center_name: String,
     pub team_id: Uuid,
@@ -43,10 +43,10 @@ pub struct AllocationEntry {
     pub distance_km: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ResourceStateModification {
     pub resource_id: Uuid,
-    pub new_status: &'static str,
+    pub new_status: String,
     pub reason: String,
 }
 
@@ -153,7 +153,7 @@ pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoRespons
                 ));
                 resource_modifications.push(ResourceStateModification {
                     resource_id: picked.id,
-                    new_status: "REJECTED",
+                    new_status: "REJECTED".to_string(),
                     reason: format!(
                         "{} Hub has no {:?} available; re-routed via secondary hub",
                         primary.name, kind
@@ -162,7 +162,7 @@ pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoRespons
             } else {
                 resource_modifications.push(ResourceStateModification {
                     resource_id: Uuid::nil(),
-                    new_status: "REJECTED",
+                    new_status: "REJECTED".to_string(),
                     reason: format!(
                         "no {:?} resource available across the network for incident {}",
                         kind, incident.title
@@ -249,7 +249,7 @@ pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoRespons
         };
 
         envelopes.push(ToolCallEnvelope {
-            tool_name: TOOL_NAME,
+            tool_name: TOOL_NAME.to_string(),
             arguments: DispatchArguments {
                 incident_id: incident.id,
                 primary_center_id: primary.id,
