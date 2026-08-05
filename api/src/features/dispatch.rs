@@ -51,6 +51,33 @@ pub struct ResourceStateModification {
 }
 
 pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoResponse, ApiError> {
+    let envelopes = heuristic_dispatch(&state).await?;
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "generated_at": Utc::now(),
+            "recommendations": envelopes,
+        })),
+    ))
+}
+
+/// Pure deterministic multi-center dispatch heuristic (data.md §5A + §7).
+///
+/// Loads the live snapshot of incidents, command centers, resources, and helper
+/// teams, ranks incidents by priority, picks the nearest hub for each incident,
+/// and reserves the smallest set of resources + helper teams needed to cover
+/// every required resource type. State mutations (resource → EN_ROUTE, team
+/// `assigned_members` bump, new `helper_allocations` row) are committed in a
+/// single Postgres transaction when the database is configured; otherwise the
+/// in-memory `AppState` maps are updated in place.
+///
+/// This is the fallback path the Rig orchestrator calls when the configured LLM
+/// is unavailable, the semaphore is exhausted, or no provider is configured at
+/// all (per data.md §5B and §7). It is `pub(crate)` so the orchestrator can
+/// invoke it without exposing it on the public handler surface.
+pub(crate) async fn heuristic_dispatch(
+    state: &AppState,
+) -> Result<Vec<ToolCallEnvelope>, ApiError> {
     let (incidents, centers, resources, teams) = match &state.database {
         Some(pool) => (
             incidents::list_all_postgres(pool).await?,
@@ -308,13 +335,7 @@ pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoRespons
         drop(state_teams);
     }
 
-    Ok((
-        StatusCode::OK,
-        Json(serde_json::json!({
-            "generated_at": Utc::now(),
-            "recommendations": envelopes,
-        })),
-    ))
+    Ok(envelopes)
 }
 
 // --- helpers ----------------------------------------------------------------
