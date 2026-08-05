@@ -59,6 +59,13 @@ impl FlushKind {
             FlushKind::HelperAllocation => "helper_allocations",
         }
     }
+
+    /// Lower-case identifier used as a Prometheus label. Same spelling as
+    /// `as_str` but kept separate so the metric surface can diverge from
+    /// the SQL table name without affecting driver logic.
+    pub fn kind_label(&self) -> &'static str {
+        self.as_str()
+    }
 }
 
 /// One mutation mark emitted by the rest of the system when a row is
@@ -175,6 +182,7 @@ async fn flush_once(
         std::mem::take(&mut *buf)
     };
     if marks.is_empty() {
+        crate::observability::record_flush_tick("noop");
         return;
     }
     // Collapse duplicates: one UPDATE per (kind, id) regardless of how many
@@ -193,6 +201,7 @@ async fn flush_once(
                 error = %error,
                 "60s conditional flush UPDATE failed; will retry next tick"
             );
+            crate::observability::record_flush_tick("failed");
             // Re-queue the marks so the next tick retries them.
             let mut buf = pending.write().await;
             buf.extend(deduped);
@@ -209,6 +218,7 @@ async fn flush_once(
         marks: deduped,
     };
     let _ = notices.send(notice);
+    crate::observability::record_flush_tick("applied");
     tracing::debug!(
         count = deduped_for_log.len(),
         "60s conditional flush completed"

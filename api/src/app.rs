@@ -20,6 +20,7 @@ use crate::{
         resources::{self},
         simulation, sync,
     },
+    observability,
     state::AppState,
 };
 
@@ -76,7 +77,7 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
         )
         .route(
             "/v1/helper-allocations/{id}",
-            get(helper_allocations::get_one),
+            get(helper_allocations::get_one).patch(helper_allocations::update),
         )
         .route("/v1/dispatch/recommendations", post(dispatch::recommend))
         .route("/v1/dispatch/apply", post(dispatch::apply))
@@ -90,9 +91,11 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
     Router::new()
         .route("/health/live", get(health::live))
         .route("/health/ready", get(health::ready))
+        .route("/metrics", get(observability::handler))
         .nest("/api", api)
         .layer(
             ServiceBuilder::new()
+                .layer(axum::middleware::from_fn(observability::http_metrics_layer))
                 .layer(TraceLayer::new_for_http())
                 .layer(build_cors_layer(config)),
         )

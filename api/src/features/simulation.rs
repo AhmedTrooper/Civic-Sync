@@ -49,8 +49,10 @@ pub struct SimulationState {
 
 impl SimulationState {
     pub fn new(autostart: bool) -> Arc<Self> {
+        let paused = !autostart;
+        crate::observability::set_simulation_paused(paused);
         Arc::new(Self {
-            paused: Mutex::new(!autostart),
+            paused: Mutex::new(paused),
             generated: Mutex::new(0),
         })
     }
@@ -63,11 +65,15 @@ impl SimulationState {
     pub async fn pause(&self) {
         let mut flag = self.paused.lock().await;
         *flag = true;
+        drop(flag);
+        crate::observability::set_simulation_paused(true);
     }
 
     pub async fn resume(&self) {
         let mut flag = self.paused.lock().await;
         *flag = false;
+        drop(flag);
+        crate::observability::set_simulation_paused(false);
     }
 
     pub async fn generated_count(&self) -> u64 {
@@ -77,6 +83,8 @@ impl SimulationState {
     async fn record_generated(&self) {
         let mut counter = self.generated.lock().await;
         *counter = counter.saturating_add(1);
+        drop(counter);
+        crate::observability::record_simulation_generated();
     }
 }
 

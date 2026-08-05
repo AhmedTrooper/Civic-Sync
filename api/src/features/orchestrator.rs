@@ -170,6 +170,7 @@ impl SemaphoreGate {
                     semaphore_permits = Self::PERMITS_PER_WINDOW,
                     "orchestrator semaphore exhausted; using heuristic fallback"
                 );
+                crate::observability::record_semaphore("exhausted");
                 return false;
             }
         };
@@ -197,8 +198,10 @@ impl SemaphoreGate {
                 permits_used = used,
                 "orchestrator window exhausted; using heuristic fallback"
             );
+            crate::observability::record_semaphore("exhausted");
             return false;
         }
+        crate::observability::record_semaphore("acquired");
         true
     }
 
@@ -284,16 +287,21 @@ impl Orchestrator {
     pub async fn dispatch(&self, state: &AppState) -> Result<Vec<ToolCallEnvelope>, ApiError> {
         let heuristic = dispatch::heuristic_dispatch(state).await?;
         if !self.gate.try_acquire().await {
+            crate::observability::record_dispatch("semaphore", heuristic.len());
             return Ok(heuristic);
         }
         match enrich_with_llm(self, &heuristic).await {
-            Ok(enriched) => Ok(enriched),
+            Ok(enriched) => {
+                crate::observability::record_dispatch("none", enriched.len());
+                Ok(enriched)
+            }
             Err(error) => {
                 tracing::warn!(
                     error = %error,
                     provider = self.provider.id(),
                     "LLM enrichment failed; returning heuristic envelopes"
                 );
+                crate::observability::record_dispatch("llm_error", heuristic.len());
                 Ok(heuristic)
             }
         }

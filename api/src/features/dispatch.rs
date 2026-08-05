@@ -537,12 +537,26 @@ pub(crate) async fn heuristic_dispatch(
 // --- helpers ----------------------------------------------------------------
 
 fn nearest_center(centers: &[CommandCenter], lat: f64, lon: f64) -> &CommandCenter {
+    let cached_id = crate::cache::nearest_center(centers, lat, lon);
+    if cached_id.is_nil() {
+        return centers
+            .iter()
+            .min_by(|a, b| {
+                let da = haversine_km(lat, lon, a.latitude, a.longitude);
+                let db = haversine_km(lat, lon, b.latitude, b.longitude);
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .expect("centers list is non-empty (validated at function entry)");
+    }
     centers
         .iter()
-        .min_by(|a, b| {
-            let da = haversine_km(lat, lon, a.latitude, a.longitude);
-            let db = haversine_km(lat, lon, b.latitude, b.longitude);
-            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+        .find(|c| c.id == cached_id)
+        .or_else(|| {
+            centers.iter().min_by(|a, b| {
+                let da = haversine_km(lat, lon, a.latitude, a.longitude);
+                let db = haversine_km(lat, lon, b.latitude, b.longitude);
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            })
         })
         .expect("centers list is non-empty (validated at function entry)")
 }

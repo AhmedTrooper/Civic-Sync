@@ -86,6 +86,7 @@ impl AppState {
     /// logged at debug and otherwise ignored — flush marks are advisory.
     pub fn enqueue_flush(&self, mark: FlushMark) {
         let tx = self.flush_tx.clone();
+        crate::observability::record_flush_mark(mark.kind.as_str());
         tokio::spawn(async move {
             if let Err(error) = tx.send(mark).await {
                 tracing::debug!(
