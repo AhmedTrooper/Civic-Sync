@@ -24,33 +24,15 @@ pub enum ResourceType {
     MedicalRation,
 }
 
+/// data.md §6.4 — only the four spec states are stored. FAILED is a
+/// delta-trigger condition (§5B), not a stored status.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ResourceStatus {
-    Available,
     EnRoute,
     Stuck,
     Rejected,
     Completed,
-}
-
-impl ResourceStatus {
-    fn can_transition_to(self, target: ResourceStatus) -> bool {
-        use ResourceStatus::*;
-        matches!(
-            (self, target),
-            (Available, EnRoute)
-                | (Available, Stuck)
-                | (EnRoute, Stuck)
-                | (EnRoute, Completed)
-                | (EnRoute, Rejected)
-                | (Stuck, EnRoute)
-                | (Stuck, Rejected)
-                | (Stuck, Completed)
-                | (Rejected, Available)
-                | (Completed, Available)
-        )
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,7 +118,7 @@ pub async fn create(
         incident_id: None,
         resource_type: input.resource_type,
         unit_identifier: input.unit_identifier.trim().to_string(),
-        status: ResourceStatus::Available,
+        status: ResourceStatus::EnRoute,
         distance_passed_km: 0.0,
         distance_remaining_km: 0.0,
         latitude: input.latitude,
@@ -232,12 +214,6 @@ async fn update_status_in_memory(
 ) -> Result<Json<Resource>, ApiError> {
     let mut resources = state.resources.write().await;
     let resource = resources.get_mut(&id).ok_or(ApiError::NotFound)?;
-    if !resource.status.can_transition_to(update.status) {
-        return Err(ApiError::Conflict(format!(
-            "cannot transition resource {:?} from {:?} to {:?}",
-            resource.resource_type, resource.status, update.status
-        )));
-    }
     resource.status = update.status;
     resource.incident_id = update.incident_id;
     if let Some(passed) = update.distance_passed_km {
@@ -358,12 +334,7 @@ async fn update_status_postgres(
     .ok_or(ApiError::NotFound)?;
 
     let resource: Resource = Resource::from(existing);
-    if !resource.status.can_transition_to(update.status) {
-        return Err(ApiError::Conflict(format!(
-            "cannot transition resource {:?} from {:?} to {:?}",
-            resource.resource_type, resource.status, update.status
-        )));
-    }
+    drop(resource); // transitioned freely per data.md §6.4 (no transition rules specified).
 
     let now = Utc::now();
     sqlx::query(
@@ -425,7 +396,7 @@ impl From<ResourceRow> for Resource {
             resource_type: serde_json::from_value(row.resource_type)
                 .unwrap_or(ResourceType::Ambulance),
             unit_identifier: row.unit_identifier,
-            status: serde_json::from_value(row.status).unwrap_or(ResourceStatus::Available),
+            status: serde_json::from_value(row.status).unwrap_or(ResourceStatus::EnRoute),
             distance_passed_km: row.distance_passed_km,
             distance_remaining_km: row.distance_remaining_km,
             latitude: row.latitude,

@@ -34,7 +34,10 @@ pub async fn recommend(State(state): State<AppState>) -> Result<impl IntoRespons
         .map(|incident| {
             let nearest = resources
                 .iter()
-                .filter(|resource| matches!(resource.status, resources::ResourceStatus::Available))
+                .filter(|resource| {
+                    matches!(resource.status, resources::ResourceStatus::EnRoute)
+                        && resource.incident_id.is_none()
+                })
                 .min_by(|a, b| {
                     let dist_a = haversine_km(
                         incident.latitude,

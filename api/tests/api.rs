@@ -39,7 +39,7 @@ fn sample_resource() -> Resource {
         incident_id: None,
         resource_type: ResourceType::Ambulance,
         unit_identifier: "AMB-001".into(),
-        status: ResourceStatus::Available,
+        status: ResourceStatus::EnRoute,
         distance_passed_km: 0.0,
         distance_remaining_km: 0.0,
         latitude: 23.8103,
