@@ -1,13 +1,19 @@
+use std::sync::Arc;
+
 use axum::{
     Router,
-    http::Method,
+    http::{HeaderValue, Method},
     routing::{get, patch, post},
 };
 use sqlx::PgPool;
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    cors::{AllowOrigin, CorsLayer},
+    trace::TraceLayer,
+};
 
 use crate::{
+    config::Config,
     features::{
         assistance_requests, command_centers, dispatch, health, helper_allocations, helper_teams,
         incidents::{self},
@@ -17,11 +23,20 @@ use crate::{
 };
 
 pub fn router(database: Option<PgPool>) -> Router {
-    let state = AppState::new(database);
-    router_with_state(state)
+    router_with_config(database, Config::default_for_tests())
+}
+
+pub fn router_with_config(database: Option<PgPool>, config: Arc<Config>) -> Router {
+    let state = AppState::with_config(database, config.clone());
+    router_with_state_and_config(state, config.as_ref())
 }
 
 pub fn router_with_state(state: AppState) -> Router {
+    let config = state.config.clone();
+    router_with_state_and_config(state, config.as_ref())
+}
+
+pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router {
     let api = Router::new()
         .route("/v1/command-centers", get(command_centers::list))
         .route("/v1/command-centers/{id}", get(command_centers::get_one))
@@ -68,12 +83,32 @@ pub fn router_with_state(state: AppState) -> Router {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(
-                    CorsLayer::new()
-                        .allow_origin(tower_http::cors::Any)
-                        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::OPTIONS])
-                        .allow_headers(tower_http::cors::Any),
-                ),
+                .layer(build_cors_layer(config)),
         )
         .with_state(state)
+}
+
+fn build_cors_layer(config: &Config) -> CorsLayer {
+    let methods = [
+        Method::GET,
+        Method::POST,
+        Method::PATCH,
+        Method::PUT,
+        Method::DELETE,
+        Method::OPTIONS,
+    ];
+    let allow_origin = if config.allowed_origins.is_empty() {
+        AllowOrigin::any()
+    } else {
+        let values: Vec<HeaderValue> = config
+            .allowed_origins
+            .iter()
+            .filter_map(|origin| HeaderValue::from_str(origin).ok())
+            .collect();
+        AllowOrigin::list(values)
+    };
+    CorsLayer::new()
+        .allow_origin(allow_origin)
+        .allow_methods(methods)
+        .allow_headers(tower_http::cors::Any)
 }

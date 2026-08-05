@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    let router = app::router(database);
+    let router = app::router_with_config(database, config.clone());
     let listener = tokio::net::TcpListener::bind(config.bind_address).await?;
     let address = listener.local_addr()?;
     tracing::info!(%address, "Civic-Sync API listening");

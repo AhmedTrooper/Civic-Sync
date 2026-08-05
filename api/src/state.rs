@@ -4,14 +4,18 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::features::{
-    assistance_requests::AssistanceRequest, command_centers::CommandCenter,
-    helper_allocations::HelperAllocation, helper_teams::HelperTeam, incidents::Incident,
-    resources::Resource,
+use crate::{
+    config::Config,
+    features::{
+        assistance_requests::AssistanceRequest, command_centers::CommandCenter,
+        helper_allocations::HelperAllocation, helper_teams::HelperTeam, incidents::Incident,
+        resources::Resource,
+    },
 };
 
 #[derive(Clone)]
 pub struct AppState {
+    pub config: Arc<Config>,
     pub database: Option<PgPool>,
     pub incidents: Arc<RwLock<HashMap<Uuid, Incident>>>,
     pub resources: Arc<RwLock<HashMap<Uuid, Resource>>>,
@@ -22,12 +26,21 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// Convenience constructor used by tests and the default `router` path.
+    /// Uses an empty `Config::default_for_tests()` so handlers can still read
+    /// config without panicking.
     pub fn new(database: Option<PgPool>) -> Self {
+        Self::with_config(database, Config::default_for_tests())
+    }
+
+    /// Real entry point used by `main.rs` after `Config::from_env()`.
+    pub fn with_config(database: Option<PgPool>, config: Arc<Config>) -> Self {
         let command_centers = crate::features::command_centers::seed_command_centers()
             .into_iter()
             .map(|center| (center.id, center))
             .collect::<HashMap<_, _>>();
         Self {
+            config,
             database,
             incidents: Arc::new(RwLock::new(HashMap::new())),
             resources: Arc::new(RwLock::new(HashMap::new())),
