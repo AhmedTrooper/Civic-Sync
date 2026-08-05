@@ -93,6 +93,74 @@ pub struct ListIncidentsQuery {
     pub offset: Option<i64>,
 }
 
+/// PATCH body for `PATCH /api/v1/incidents/{id}`. Every field is optional;
+/// clients send only the delta they want applied. data.md §5B requires that
+/// intra-incident deltas (Δcasualty ≥ 10, severity 3 → 5) wake the trigger
+/// driver, so this endpoint exists specifically to unlock those signals
+/// after creation.
+#[derive(Debug, Deserialize)]
+pub struct UpdateIncident {
+    pub title: Option<String>,
+    pub severity_level: Option<u8>,
+    pub affected_people: Option<u32>,
+    pub casualty_count: Option<u32>,
+    pub status: Option<IncidentStatus>,
+    pub required_resource_types: Option<Vec<ResourceType>>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+}
+
+impl UpdateIncident {
+    pub fn validate(&self) -> Result<(), ApiError> {
+        if let Some(title) = &self.title {
+            if title.trim().is_empty() {
+                return Err(ApiError::Validation("title must not be empty".into()));
+            }
+            if title.len() > 255 {
+                return Err(ApiError::Validation(
+                    "title must not exceed 255 characters".into(),
+                ));
+            }
+        }
+        if let Some(severity) = self.severity_level
+            && !(1..=5).contains(&severity)
+        {
+            return Err(ApiError::Validation(
+                "severity_level must be between 1 and 5".into(),
+            ));
+        }
+        if let Some(latitude) = self.latitude
+            && !(-90.0..=90.0).contains(&latitude)
+        {
+            return Err(ApiError::Validation(
+                "latitude must be between -90 and 90".into(),
+            ));
+        }
+        if let Some(longitude) = self.longitude
+            && !(-180.0..=180.0).contains(&longitude)
+        {
+            return Err(ApiError::Validation(
+                "longitude must be between -180 and 180".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Whether this PATCH carries any state-mutating payload. Used to
+    /// short-circuit no-op PATCHes (e.g. `{}`) so we don't fire triggers
+    /// or enqueue flush marks for nothing.
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none()
+            && self.severity_level.is_none()
+            && self.affected_people.is_none()
+            && self.casualty_count.is_none()
+            && self.status.is_none()
+            && self.required_resource_types.is_none()
+            && self.latitude.is_none()
+            && self.longitude.is_none()
+    }
+}
+
 pub async fn create(
     State(state): State<AppState>,
     Json(input): Json<CreateIncident>,
@@ -166,6 +234,53 @@ fn fire_incident_triggers(state: &AppState, incident: &Incident) {
     });
 }
 
+/// Detect intra-incident deltas after a PATCH (data.md §5B):
+/// * Δcasualty ≥ 10 (jump, not +1).
+/// * Severity escalation 3 → 5.
+///
+/// The pre-PATCH snapshot must be passed in so we don't fire on values
+/// that were already at the threshold before the update.
+fn fire_update_triggers(state: &AppState, previous: &Incident, updated: &Incident) {
+    let delta_casualties = updated
+        .casualty_count
+        .saturating_sub(previous.casualty_count);
+    let severity_escalated_to_five = previous.severity_level < 5 && updated.severity_level == 5;
+    if delta_casualties < 10 && !severity_escalated_to_five {
+        return;
+    }
+    let sender = state.triggers_tx.clone();
+    let id = updated.id;
+    tokio::spawn(async move {
+        if delta_casualties >= 10
+            && let Err(error) = sender
+                .send(
+                    crate::features::triggers::TriggerEvent::DeltaCasualtyBurst {
+                        incident_id: id,
+                        delta: delta_casualties,
+                    },
+                )
+                .await
+        {
+            tracing::warn!(
+                error = %error,
+                incident_id = %id,
+                "failed to enqueue Δcasualty trigger"
+            );
+        }
+        if severity_escalated_to_five
+            && let Err(error) = sender
+                .send(crate::features::triggers::TriggerEvent::SeverityEscalatedToFive(id))
+                .await
+        {
+            tracing::warn!(
+                error = %error,
+                incident_id = %id,
+                "failed to enqueue severity-escalation trigger"
+            );
+        }
+    });
+}
+
 pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<ListIncidentsQuery>,
@@ -201,6 +316,67 @@ pub async fn get_one(
             .ok_or(ApiError::NotFound)?,
     };
     Ok(Json(incident))
+}
+
+/// PATCH /api/v1/incidents/{id}. Applies the partial update, fires
+/// intra-incident delta triggers per data.md §5B, and enqueues a flush mark
+/// so the 60s sync layer stamps `server_synced_at` on the row.
+pub async fn update(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(input): Json<UpdateIncident>,
+) -> Result<Json<Incident>, ApiError> {
+    input.validate()?;
+    if input.is_empty() {
+        // No-op PATCH: still respond with the current row so clients can
+        // round-trip without needing a separate GET.
+        return get_one(State(state), Path(id)).await;
+    }
+    let (previous, updated) = match &state.database {
+        Some(pool) => update_postgres(pool, &state, id, input).await?,
+        None => update_in_memory(&state, id, input).await?,
+    };
+    state.enqueue_flush(FlushMark::new(FlushKind::Incident, id, 0));
+    fire_update_triggers(&state, &previous, &updated);
+    Ok(Json(updated))
+}
+
+async fn update_in_memory(
+    state: &AppState,
+    id: Uuid,
+    update: UpdateIncident,
+) -> Result<(Incident, Incident), ApiError> {
+    let mut incidents = state.incidents.write().await;
+    let previous = incidents.get(&id).ok_or(ApiError::NotFound)?.clone();
+    let incident = incidents.get_mut(&id).ok_or(ApiError::NotFound)?;
+    if let Some(title) = update.title {
+        incident.title = title.trim().to_string();
+    }
+    if let Some(severity) = update.severity_level {
+        incident.severity_level = severity;
+    }
+    if let Some(affected) = update.affected_people {
+        incident.affected_people = affected;
+    }
+    if let Some(casualty) = update.casualty_count {
+        incident.casualty_count = casualty;
+    }
+    if let Some(status) = update.status {
+        incident.status = status;
+    }
+    if let Some(kinds) = update.required_resource_types {
+        incident.required_resource_types = kinds;
+    }
+    if let Some(lat) = update.latitude {
+        incident.latitude = lat;
+    }
+    if let Some(lon) = update.longitude {
+        incident.longitude = lon;
+    }
+    incident.updated_at = Utc::now();
+    let snapshot = incident.clone();
+    drop(incidents);
+    Ok((previous, snapshot))
 }
 
 impl ListIncidentsQuery {
@@ -376,6 +552,95 @@ pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Inci
     .await?
     .ok_or(ApiError::NotFound)?;
     Ok(Incident::from(row))
+}
+
+async fn update_postgres(
+    pool: &sqlx::PgPool,
+    state: &AppState,
+    id: Uuid,
+    update: UpdateIncident,
+) -> Result<(Incident, Incident), ApiError> {
+    let _ = state; // re-export hook future use; caller enqueues the flush mark.
+    let mut tx = pool.begin().await?;
+    let existing = sqlx::query_as::<_, IncidentRow>(
+        r#"SELECT id, title, severity_level, affected_people, casualty_count,
+                  ST_Y(location::geometry) AS latitude,
+                  ST_X(location::geometry) AS longitude,
+                  status, required_resource_types,
+                  created_at, updated_at, server_synced_at
+           FROM incidents WHERE id = $1 FOR UPDATE"#,
+    )
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(ApiError::NotFound)?;
+    let previous = Incident::from(existing);
+
+    // Serialise the optional `required_resource_types` into the
+    // `Vec<String>` shape the Postgres column stores.
+    let resource_types: Option<Vec<String>> =
+        update.required_resource_types.as_ref().map(|kinds| {
+            kinds
+                .iter()
+                .map(|kind| {
+                    serde_json::to_value(kind)
+                        .ok()
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                        .unwrap_or_default()
+                })
+                .collect()
+        });
+    let status_json = match update.status {
+        Some(status) => {
+            Some(serde_json::to_value(status).map_err(|err| ApiError::Internal(err.to_string()))?)
+        }
+        None => None,
+    };
+
+    let now = Utc::now();
+    sqlx::query(
+        r#"UPDATE incidents
+           SET title = COALESCE($1, title),
+               severity_level = COALESCE($2, severity_level),
+               affected_people = COALESCE($3, affected_people),
+               casualty_count = COALESCE($4, casualty_count),
+               status = COALESCE($5, status),
+               required_resource_types = COALESCE($6, required_resource_types),
+               location = CASE
+                   WHEN $7::double precision IS NOT NULL AND $8::double precision IS NOT NULL
+                       THEN ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography
+                   ELSE location
+               END,
+               updated_at = $9
+           WHERE id = $10"#,
+    )
+    .bind(update.title.as_deref())
+    .bind(update.severity_level.map(i32::from))
+    .bind(update.affected_people.map(|v| v as i32))
+    .bind(update.casualty_count.map(|v| v as i32))
+    .bind(status_json)
+    .bind(resource_types)
+    .bind(update.latitude)
+    .bind(update.longitude)
+    .bind(now)
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    let row = sqlx::query_as::<_, IncidentRow>(
+        r#"SELECT id, title, severity_level, affected_people, casualty_count,
+                  ST_Y(location::geometry) AS latitude,
+                  ST_X(location::geometry) AS longitude,
+                  status, required_resource_types,
+                  created_at, updated_at, server_synced_at
+           FROM incidents WHERE id = $1"#,
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+    let updated = Incident::from(row);
+    Ok((previous, updated))
 }
 
 #[derive(sqlx::FromRow)]

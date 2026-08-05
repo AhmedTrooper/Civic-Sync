@@ -38,6 +38,12 @@ pub enum TriggerEvent {
     NewSeverityFiveIncident(uuid::Uuid),
     /// A new incident was created with `casualty_count >= 10`.
     NewMassCasualtyIncident(uuid::Uuid),
+    /// An existing incident's `casualty_count` jumped by at least 10
+    /// (data.md §5B intra-incident delta).
+    DeltaCasualtyBurst { incident_id: uuid::Uuid, delta: u32 },
+    /// An existing incident was escalated from below 5 to severity 5
+    /// (data.md §5B intra-incident delta).
+    SeverityEscalatedToFive(uuid::Uuid),
 }
 
 /// Buffer size for the trigger event channel. Bigger than 1 so we don't
@@ -129,6 +135,18 @@ async fn run_event(
         TriggerEvent::NewMassCasualtyIncident(id) => {
             tracing::info!(incident_id = %id, "trigger: mass-casualty incident");
             "incident_mass_casualty"
+        }
+        TriggerEvent::DeltaCasualtyBurst { incident_id, delta } => {
+            tracing::info!(
+                incident_id = %incident_id,
+                delta = delta,
+                "trigger: Δcasualty ≥ 10 burst"
+            );
+            "incident_delta_casualty"
+        }
+        TriggerEvent::SeverityEscalatedToFive(id) => {
+            tracing::info!(incident_id = %id, "trigger: severity escalated to 5");
+            "incident_severity_escalated"
         }
     };
     if let Some(orch) = orchestrator.as_ref() {

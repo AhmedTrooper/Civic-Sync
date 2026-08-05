@@ -833,3 +833,120 @@ async fn dispatch_semaphore_exhaustion_does_not_block_subsequent_calls() {
         envelopes[0].arguments.justification
     );
 }
+
+#[tokio::test]
+async fn patch_incident_partial_update_persists_changes() {
+    let state = AppState::new(None);
+    let incident_id = {
+        let mut incidents = state.incidents.write().await;
+        let inc = sample_incident();
+        let id = inc.id;
+        incidents.insert(id, inc);
+        id
+    };
+
+    let app = app::router_with_state(state.clone());
+    let body = json!({ "casualty_count": 18, "severity_level": 5 });
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/api/v1/incidents/{incident_id}"))
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let updated: Incident = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse incident");
+    assert_eq!(updated.casualty_count, 18);
+    assert_eq!(updated.severity_level, 5);
+    // Title untouched (PATCH is partial).
+    assert_eq!(updated.title, "Flooding in Mirpur");
+}
+
+#[tokio::test]
+async fn patch_incident_rejects_invalid_severity() {
+    let state = AppState::new(None);
+    let incident_id = {
+        let mut incidents = state.incidents.write().await;
+        let inc = sample_incident();
+        let id = inc.id;
+        incidents.insert(id, inc);
+        id
+    };
+
+    let app = app::router_with_state(state);
+    let body = json!({ "severity_level": 7 });
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/api/v1/incidents/{incident_id}"))
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn patch_incident_no_op_returns_current_row() {
+    let state = AppState::new(None);
+    let incident_id = {
+        let mut incidents = state.incidents.write().await;
+        let inc = sample_incident();
+        let id = inc.id;
+        incidents.insert(id, inc);
+        id
+    };
+
+    let app = app::router_with_state(state);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/api/v1/incidents/{incident_id}"))
+                .header("content-type", "application/json")
+                .body(Body::from("{}"))
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let row: Incident = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse incident");
+    assert_eq!(row.id, incident_id);
+}
+
+#[tokio::test]
+async fn patch_incident_missing_returns_404() {
+    let state = AppState::new(None);
+    let app = app::router_with_state(state);
+    let missing = Uuid::new_v4();
+    let body = json!({ "casualty_count": 12 });
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PATCH")
+                .uri(format!("/api/v1/incidents/{missing}"))
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}

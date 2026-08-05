@@ -44,7 +44,10 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
             "/v1/incidents",
             post(incidents::create).get(incidents::list),
         )
-        .route("/v1/incidents/{id}", get(incidents::get_one))
+        .route(
+            "/v1/incidents/{id}",
+            get(incidents::get_one).patch(incidents::update),
+        )
         .route(
             "/v1/resources",
             post(resources::create).get(resources::list),
