@@ -1213,3 +1213,94 @@ async fn patch_helper_allocation_missing_returns_404() {
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
+#[tokio::test]
+async fn delete_incident_removes_resource() {
+    let app = app::router_with_state(AppState::new(None));
+    let (_, body) = post_json(
+        &app,
+        "/api/v1/incidents",
+        &json!({
+            "title": "To delete",
+            "severity_level": 3,
+            "affected_people": 50,
+            "casualty_count": 0,
+            "latitude": 23.81,
+            "longitude": 90.41,
+        }),
+    )
+    .await;
+    let incident_id = body["id"].as_str().expect("incident id").to_string();
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/v1/incidents/{incident_id}"))
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run delete");
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+    let (status, _) = get_json(&app, &format!("/api/v1/incidents/{incident_id}")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn delete_incident_missing_returns_404() {
+    let app = app::router_with_state(AppState::new(None));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/v1/incidents/{}", Uuid::new_v4()))
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run delete");
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn delete_command_center_seeded_returns_409() {
+    let app = app::router_with_state(AppState::new(None));
+    // Pull the first seeded hub id and try to delete it.
+    let (_, body) = get_json(&app, "/api/v1/command-centers").await;
+    let centers: Vec<CommandCenter> = serde_json::from_value(body).expect("parse command centers");
+    let seeded_id = centers
+        .iter()
+        .find(|c| c.is_core_center)
+        .expect("at least one core center")
+        .id;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/v1/command-centers/{seeded_id}"))
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run delete");
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn delete_helper_allocation_missing_returns_404() {
+    let app = app::router_with_state(AppState::new(None));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/v1/helper-allocations/{}", Uuid::new_v4()))
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run delete");
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}

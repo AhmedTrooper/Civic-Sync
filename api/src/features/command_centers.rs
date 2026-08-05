@@ -1,12 +1,17 @@
 use axum::{
     Json,
     extract::{Path, Query, State},
+    http::StatusCode,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::ApiError, state::AppState};
+use crate::{
+    error::ApiError,
+    features::flush::{FlushKind, FlushMark},
+    state::AppState,
+};
 
 /// The 8 divisional command hubs. Dhaka is the core center that supplies
 /// fallback resources when a divisional hub faces a regional deficit.
@@ -79,6 +84,48 @@ pub async fn get_one(
             .ok_or(ApiError::NotFound)?,
     };
     Ok(Json(center))
+}
+
+/// DELETE /api/v1/command-centers/{id}. The 8 divisional hubs are part of the
+/// system identity (data.md §1) and are protected from removal; any other
+/// command center row can be deleted.
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    let seeded_ids: std::collections::HashSet<Uuid> = seed_command_centers()
+        .into_iter()
+        .map(|center| center.id)
+        .collect();
+    if seeded_ids.contains(&id) {
+        return Err(ApiError::Conflict(
+            "seeded command center cannot be removed".into(),
+        ));
+    }
+    match &state.database {
+        Some(pool) => delete_postgres(pool, id).await?,
+        None => {
+            state
+                .command_centers
+                .write()
+                .await
+                .remove(&id)
+                .ok_or(ApiError::NotFound)?;
+        }
+    }
+    state.enqueue_flush(FlushMark::new(FlushKind::CommandCenter, id, 0));
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn delete_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<(), ApiError> {
+    let result = sqlx::query("DELETE FROM command_centers WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
 }
 
 impl ListCommandCentersQuery {

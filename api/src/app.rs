@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     Router,
     http::{HeaderValue, Method},
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
 };
 use sqlx::PgPool;
 use tower::ServiceBuilder;
@@ -41,27 +41,35 @@ pub fn router_with_state(state: AppState) -> Router {
 pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router {
     let api = Router::new()
         .route("/v1/command-centers", get(command_centers::list))
-        .route("/v1/command-centers/{id}", get(command_centers::get_one))
+        .route(
+            "/v1/command-centers/{id}",
+            get(command_centers::get_one).delete(command_centers::delete),
+        )
         .route(
             "/v1/incidents",
             post(incidents::create).get(incidents::list),
         )
         .route(
             "/v1/incidents/{id}",
-            get(incidents::get_one).patch(incidents::update),
+            get(incidents::get_one)
+                .patch(incidents::update)
+                .delete(incidents::delete),
         )
         .route(
             "/v1/resources",
             post(resources::create).get(resources::list),
         )
         .route("/v1/resources/{id}/status", patch(resources::update_status))
+        .route("/v1/resources/{id}", delete(resources::delete))
         .route(
             "/v1/helper-teams",
             post(helper_teams::create).get(helper_teams::list),
         )
         .route(
             "/v1/helper-teams/{id}",
-            get(helper_teams::get_one).patch(helper_teams::update),
+            get(helper_teams::get_one)
+                .patch(helper_teams::update)
+                .delete(helper_teams::delete),
         )
         .route(
             "/v1/assistance-requests",
@@ -69,7 +77,9 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
         )
         .route(
             "/v1/assistance-requests/{id}",
-            get(assistance_requests::get_one).patch(assistance_requests::update_status),
+            get(assistance_requests::get_one)
+                .patch(assistance_requests::update_status)
+                .delete(assistance_requests::delete),
         )
         .route(
             "/v1/helper-allocations",
@@ -77,7 +87,9 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
         )
         .route(
             "/v1/helper-allocations/{id}",
-            get(helper_allocations::get_one).patch(helper_allocations::update),
+            get(helper_allocations::get_one)
+                .patch(helper_allocations::update)
+                .delete(helper_allocations::delete),
         )
         .route("/v1/dispatch/recommendations", post(dispatch::recommend))
         .route("/v1/dispatch/apply", post(dispatch::apply))

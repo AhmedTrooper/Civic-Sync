@@ -348,6 +348,44 @@ pub async fn update(
     Ok(Json(updated))
 }
 
+/// DELETE /api/v1/incidents/{id}. Removes the row and emits a flush mark so
+/// the 60s sync layer forgets it. Dependent `helper_allocations` rows that
+/// point at this incident are removed by the FK cascade on Postgres
+/// (`migrations/0004_helper_teams_allocations.sql:36`); in-memory orphans are
+/// left for a future reconciliation cycle.
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    match &state.database {
+        Some(pool) => delete_postgres(pool, id).await?,
+        None => delete_in_memory(&state, id).await?,
+    }
+    state.enqueue_flush(FlushMark::new(FlushKind::Incident, id, 0));
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn delete_in_memory(state: &AppState, id: Uuid) -> Result<(), ApiError> {
+    state
+        .incidents
+        .write()
+        .await
+        .remove(&id)
+        .ok_or(ApiError::NotFound)?;
+    Ok(())
+}
+
+async fn delete_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<(), ApiError> {
+    let result = sqlx::query("DELETE FROM incidents WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
+}
+
 async fn update_in_memory(
     state: &AppState,
     id: Uuid,

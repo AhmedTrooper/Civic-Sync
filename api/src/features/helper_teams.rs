@@ -181,6 +181,38 @@ pub async fn update(
     Ok(result)
 }
 
+/// DELETE /api/v1/helper-teams/{id}. Dependent helper allocations are removed
+/// by the Postgres FK cascade; in-memory allocations are reconciled later.
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    match &state.database {
+        Some(pool) => delete_postgres(pool, id).await?,
+        None => {
+            state
+                .helper_teams
+                .write()
+                .await
+                .remove(&id)
+                .ok_or(ApiError::NotFound)?;
+        }
+    }
+    state.enqueue_flush(FlushMark::new(FlushKind::HelperTeam, id, 0));
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn delete_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<(), ApiError> {
+    let result = sqlx::query("DELETE FROM helper_teams WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
+}
+
 impl ListHelperTeamsQuery {
     fn matches(&self, team: &HelperTeam) -> bool {
         if let Some(status) = self.status
