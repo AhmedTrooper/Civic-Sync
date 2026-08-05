@@ -56,11 +56,13 @@ interface ResourceMapProps {
 		longitude: number;
 	};
 	center: {
+		id: string;
 		name: string;
 		latitude: number;
 		longitude: number;
 	} | null;
 	incident: {
+		id: string;
 		title: string;
 		latitude: number;
 		longitude: number;
@@ -112,6 +114,12 @@ export default function ResourceMap({
 							<div className="font-bold text-indigo-600">
 								{center.name} Hub (Base)
 							</div>
+							<a
+								href={`/centers/${center.id}`}
+								className="inline-block mt-1.5 text-xs font-bold text-indigo-600 hover:underline"
+							>
+								View Center &rarr;
+							</a>
 						</Popup>
 					</Marker>
 					<Polyline
@@ -141,6 +149,12 @@ export default function ResourceMap({
 							<div className="text-xs text-slate-600">
 								Severity Level {incident.severity_level}
 							</div>
+							<a
+								href={`/incidents/${incident.id}`}
+								className="inline-block mt-1.5 text-xs font-bold text-rose-600 hover:underline"
+							>
+								View Incident &rarr;
+							</a>
 						</Popup>
 					</Marker>
 					<Polyline

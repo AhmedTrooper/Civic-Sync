@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	Activity,
 	AlertCircle,
@@ -510,7 +510,13 @@ function AdminPanel() {
 												) : (
 													<div className="flex justify-between items-start">
 														<div>
-															<p className="font-bold text-sm">{inc.title}</p>
+															<Link
+																to="/incidents/$incidentId"
+																params={{ incidentId: inc.id }}
+																className="font-bold text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+															>
+																{inc.title}
+															</Link>
 															<p className="text-xs font-semibold text-indigo-500 mt-1">
 																Center: {centerName}
 															</p>

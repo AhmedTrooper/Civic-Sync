@@ -1,3 +1,4 @@
+import React from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -79,6 +80,12 @@ export default function DashboardMap({
 						<div className="text-xs text-slate-500">
 							{c.is_core_center ? "Core Operations Center" : "Divisional Hub"}
 						</div>
+						<a
+							href={`/centers/${c.id}`}
+							className="inline-block mt-1.5 text-xs font-bold text-indigo-600 hover:underline"
+						>
+							View Center Details &rarr;
+						</a>
 					</Popup>
 				</Marker>
 			))}
@@ -87,9 +94,8 @@ export default function DashboardMap({
 			{incidents
 				.filter((i) => i.status === "ACTIVE")
 				.map((inc) => (
-					<>
+					<React.Fragment key={inc.id}>
 						<Circle
-							key={`circle-${inc.id}`}
 							center={[inc.latitude, inc.longitude]}
 							pathOptions={{
 								color: "#f43f5e",
@@ -100,7 +106,6 @@ export default function DashboardMap({
 							radius={inc.severity_level * 1500}
 						/>
 						<Marker
-							key={inc.id}
 							position={[inc.latitude, inc.longitude]}
 							icon={incidentIcon}
 						>
@@ -109,9 +114,15 @@ export default function DashboardMap({
 								<div className="text-xs text-slate-600">
 									L{inc.severity_level} · {inc.status}
 								</div>
+								<a
+									href={`/incidents/${inc.id}`}
+									className="inline-block mt-1.5 text-xs font-bold text-rose-600 hover:underline"
+								>
+									View Incident Details &rarr;
+								</a>
 							</Popup>
 						</Marker>
-					</>
+					</React.Fragment>
 				))}
 		</MapContainer>
 	);

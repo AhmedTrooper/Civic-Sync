@@ -138,6 +138,12 @@ export default function IncidentMap({
 									? "Core Operations Center"
 									: "Divisional Center"}
 							</div>
+							<a
+								href={`/centers/${center.id}`}
+								className="inline-block mt-1.5 text-xs font-bold text-indigo-600 hover:underline"
+							>
+								View Center &rarr;
+							</a>
 						</Popup>
 					</Marker>
 					<Polyline
@@ -170,6 +176,12 @@ export default function IncidentMap({
 							<div className="text-xs text-slate-500">
 								{c.is_core_center ? "Core Center" : "Divisional"}
 							</div>
+							<a
+								href={`/centers/${c.id}`}
+								className="inline-block mt-1.5 text-xs font-bold text-indigo-600 hover:underline"
+							>
+								View Center &rarr;
+							</a>
 						</Popup>
 					</Marker>
 				))}
@@ -190,6 +202,12 @@ export default function IncidentMap({
 								{res.resource_type.replace(/_/g, " ")} ·{" "}
 								{res.status.replace(/_/g, " ")}
 							</div>
+							<a
+								href={`/resources/${res.id}`}
+								className="inline-block mt-1.5 text-xs font-bold text-emerald-600 hover:underline"
+							>
+								View Resource &rarr;
+							</a>
 						</Popup>
 					</Marker>
 					<Polyline

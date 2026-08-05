@@ -133,6 +133,12 @@ export default function CenterMap({
 								{res.resource_type.replace(/_/g, " ")} ·{" "}
 								{res.status.replace(/_/g, " ")}
 							</div>
+							<a
+								href={`/resources/${res.id}`}
+								className="inline-block mt-1.5 text-xs font-bold text-emerald-600 hover:underline"
+							>
+								View Resource &rarr;
+							</a>
 						</Popup>
 					</Marker>
 					<Polyline
@@ -164,6 +170,12 @@ export default function CenterMap({
 							<div className="text-xs font-semibold text-slate-600">
 								Severity L{inc.severity_level} · {inc.status}
 							</div>
+							<a
+								href={`/incidents/${inc.id}`}
+								className="inline-block mt-1.5 text-xs font-bold text-rose-600 hover:underline"
+							>
+								View Incident &rarr;
+							</a>
 						</Popup>
 					</Marker>
 					<Circle
