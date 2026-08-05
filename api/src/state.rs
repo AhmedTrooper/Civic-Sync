@@ -40,6 +40,10 @@ pub struct AppState {
     /// such as the WebSocket sync layer receive one notice per 60s
     /// window that contained at least one mutation.
     pub flush_notice_tx: broadcast::Sender<crate::features::flush::FlushNotice>,
+    /// data.md §5D simulation driver. `None` when the simulator was not
+    /// wired up at startup (tests + default in-memory boot); admin
+    /// endpoints return 404 in that case.
+    pub simulation: Option<Arc<crate::features::simulation::SimulationState>>,
 }
 
 impl AppState {
@@ -73,6 +77,7 @@ impl AppState {
             triggers_tx,
             flush_tx,
             flush_notice_tx,
+            simulation: None,
         }
     }
 
@@ -89,5 +94,16 @@ impl AppState {
                 );
             }
         });
+    }
+
+    /// Replace the simulation driver slot with a fully wired
+    /// `SimulationState`. Used by `main.rs` once the simulator task is
+    /// spawned; routes that hit `state.simulation` then work.
+    pub fn with_simulation(
+        mut self,
+        simulation: Arc<crate::features::simulation::SimulationState>,
+    ) -> Self {
+        self.simulation = Some(simulation);
+        self
     }
 }

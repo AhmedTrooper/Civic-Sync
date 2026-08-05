@@ -950,3 +950,116 @@ async fn patch_incident_missing_returns_404() {
         .expect("run request");
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn admin_simulation_status_reports_paused_when_unwired() {
+    // Default AppState has no simulation wired → admin endpoint must
+    // surface that fact rather than crashing.
+    let state = AppState::new(None);
+    let app = app::router_with_state(state);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/admin/simulation")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn admin_simulation_inject_persists_manual_incident() {
+    let state = AppState::new(None);
+    let simulation = civic_sync_api::features::simulation::SimulationState::new(false);
+    let state = state.with_simulation(simulation);
+    let app = app::router_with_state(state.clone());
+    let body = json!({
+        "title": "Manual flood report",
+        "severity_level": 4,
+        "affected_people": 250,
+        "casualty_count": 12,
+        "latitude": 23.81,
+        "longitude": 90.41,
+        "required_resource_types": ["AMBULANCE", "BOAT"],
+    });
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/admin/simulation/inject")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let injected: Incident = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse incident");
+    assert_eq!(injected.title, "Manual flood report");
+    assert_eq!(injected.casualty_count, 12);
+
+    // Confirm the row actually landed in the live state.
+    let stored = state
+        .incidents
+        .read()
+        .await
+        .get(&injected.id)
+        .cloned()
+        .expect("incident persisted");
+    assert_eq!(stored.id, injected.id);
+}
+
+#[tokio::test]
+async fn admin_simulation_pause_resume_round_trips() {
+    let state = AppState::new(None);
+    let simulation = civic_sync_api::features::simulation::SimulationState::new(false);
+    assert!(simulation.is_paused().await);
+    let state = state.with_simulation(simulation.clone());
+    let app = app::router_with_state(state);
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/admin/simulation/resume")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse status");
+    assert_eq!(body["paused"], false);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/admin/simulation/pause")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse status");
+    assert_eq!(body["paused"], true);
+}

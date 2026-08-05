@@ -46,6 +46,17 @@ async fn main() -> anyhow::Result<()> {
     state.triggers_tx = triggers_tx;
     state.flush_tx = flush_tx.clone();
     state.flush_notice_tx = flush_notice_tx.clone();
+    // §5D background simulator. Disabled by default unless SIMULATION_AUTOSTART=true.
+    let autostart = std::env::var("SIMULATION_AUTOSTART")
+        .ok()
+        .is_some_and(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes"
+            )
+        });
+    let simulation = civic_sync_api::features::simulation::SimulationState::new(autostart);
+    let state = state.with_simulation(simulation.clone());
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let triggers_handle = {
         let state = state.clone();
@@ -61,6 +72,14 @@ async fn main() -> anyhow::Result<()> {
             civic_sync_api::features::flush::run(state, flush_rx, flush_notice_tx, sd).await;
         })
     };
+    let simulation_handle = {
+        let state = state.clone();
+        let sim = simulation.clone();
+        let sd = shutdown_rx.clone();
+        tokio::spawn(async move {
+            civic_sync_api::features::simulation::run(state, sim, sd).await;
+        })
+    };
 
     let router = app::router_with_state(state);
     let listener = tokio::net::TcpListener::bind(config.bind_address).await?;
@@ -72,6 +91,7 @@ async fn main() -> anyhow::Result<()> {
     let _ = shutdown_tx.send(true);
     let _ = triggers_handle.await;
     let _ = flush_handle.await;
+    let _ = simulation_handle.await;
     Ok(())
 }
 

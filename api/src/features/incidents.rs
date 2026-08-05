@@ -201,6 +201,13 @@ pub async fn create(
 /// conditions. Each signal is fire-and-forget; the 30s ticker is the
 /// authoritative re-evaluation point.
 fn fire_incident_triggers(state: &AppState, incident: &Incident) {
+    fire_creation_triggers_for(state, incident);
+}
+
+/// Public alias for [`fire_incident_triggers`] so the simulator and
+/// the manual injection endpoint can reuse the exact same trigger
+/// fan-out without re-implementing it.
+pub fn fire_creation_triggers_for(state: &AppState, incident: &Incident) {
     let sender = state.triggers_tx.clone();
     let id = incident.id;
     let severity_five = incident.severity_level == 5;
