@@ -1,6 +1,7 @@
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::{HeaderValue, Request, StatusCode};
 use chrono::Utc;
+use civic_sync_api::config::Config;
 use civic_sync_api::features::{
     assistance_requests::{AssistanceRequest, AssistanceStatus},
     command_centers::CommandCenter,
@@ -12,6 +13,7 @@ use civic_sync_api::features::{
 };
 use civic_sync_api::{app, state::AppState};
 use serde_json::{Value, json};
+use std::sync::Arc;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -574,4 +576,88 @@ async fn dispatch_creates_helper_allocation_and_marks_resource_en_route() {
         allocations[0].incident_id,
         Some(Uuid::parse_str(&incident_id).unwrap())
     );
+}
+
+fn config_with_origins(origins: Vec<String>) -> Arc<Config> {
+    let mut config = (*Config::default_for_tests()).clone();
+    config.allowed_origins = origins;
+    Arc::new(config)
+}
+
+#[tokio::test]
+async fn cors_reflects_configured_allowed_origins() {
+    let config = config_with_origins(vec![
+        "http://allowed.test".into(),
+        "https://another.allowed.test".into(),
+    ]);
+    let app = app::router_with_config(None, config);
+
+    // Preflight from an allowed origin.
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("OPTIONS")
+                .uri("/api/v1/incidents")
+                .header("origin", "http://allowed.test")
+                .header("access-control-request-method", "GET")
+                .body(Body::empty())
+                .expect("build preflight"),
+        )
+        .await
+        .expect("run preflight");
+    assert_eq!(response.status(), StatusCode::OK);
+    let allow_origin = response
+        .headers()
+        .get("access-control-allow-origin")
+        .expect("allow-origin header is present");
+    assert_eq!(
+        allow_origin,
+        HeaderValue::from_static("http://allowed.test")
+    );
+
+    // Preflight from a non-allowed origin — the header must be absent.
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("OPTIONS")
+                .uri("/api/v1/incidents")
+                .header("origin", "http://blocked.test")
+                .header("access-control-request-method", "GET")
+                .body(Body::empty())
+                .expect("build preflight"),
+        )
+        .await
+        .expect("run preflight");
+    assert!(
+        response
+            .headers()
+            .get("access-control-allow-origin")
+            .is_none(),
+        "blocked origin must not receive allow-origin"
+    );
+}
+
+#[tokio::test]
+async fn cors_is_wildcard_when_allowed_origins_empty() {
+    let app = app::router(None);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("OPTIONS")
+                .uri("/api/v1/incidents")
+                .header("origin", "http://anything.test")
+                .header("access-control-request-method", "GET")
+                .body(Body::empty())
+                .expect("build preflight"),
+        )
+        .await
+        .expect("run preflight");
+    assert_eq!(response.status(), StatusCode::OK);
+    let allow_origin = response
+        .headers()
+        .get("access-control-allow-origin")
+        .expect("allow-origin present when empty allow list");
+    assert_eq!(allow_origin, HeaderValue::from_static("*"));
 }
