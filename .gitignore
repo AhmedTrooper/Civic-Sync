@@ -30,8 +30,17 @@
 **/.DS_Store
 **/Thumbs.db
 
+# Local Qwen Code tooling state
+.qwen/
+
 #Additional
 edge.cases
 
+# Agent instruction file (gitignored for submission anonymity — the spec requires zero identifying info in git)
+/AGENTS.md
+
 # Project specification document (treated as local reference, not source)
 /data.md
+
+# AI implementation tracker (gitignored so it stays a working note)
+/PROGRESS.md
