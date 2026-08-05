@@ -45,8 +45,8 @@ pub enum ResourceStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Resource {
     pub id: Uuid,
-    pub center_id: Option<Uuid>,
-    pub incident_id: Option<Uuid>,
+    pub owner_center_id: Uuid,
+    pub assigned_incident_id: Option<Uuid>,
     pub resource_type: ResourceType,
     pub unit_identifier: String,
     pub status: ResourceStatus,
@@ -54,6 +54,8 @@ pub struct Resource {
     pub distance_remaining_km: f64,
     pub latitude: f64,
     pub longitude: f64,
+    pub total_capacity: i32,
+    pub current_capacity: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub server_synced_at: Option<DateTime<Utc>>,
@@ -61,11 +63,17 @@ pub struct Resource {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateResource {
-    pub center_id: Option<Uuid>,
+    pub owner_center_id: Uuid,
     pub resource_type: ResourceType,
     pub unit_identifier: String,
     pub latitude: f64,
     pub longitude: f64,
+    #[serde(default = "default_capacity")]
+    pub total_capacity: i32,
+}
+
+fn default_capacity() -> i32 {
+    1
 }
 
 impl CreateResource {
@@ -99,8 +107,8 @@ impl CreateResource {
 pub struct ListResourcesQuery {
     pub status: Option<ResourceStatus>,
     pub resource_type: Option<ResourceType>,
-    pub center_id: Option<Uuid>,
-    pub incident_id: Option<Uuid>,
+    pub owner_center_id: Option<Uuid>,
+    pub assigned_incident_id: Option<Uuid>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
@@ -108,9 +116,10 @@ pub struct ListResourcesQuery {
 #[derive(Debug, Deserialize)]
 pub struct UpdateStatus {
     pub status: ResourceStatus,
-    pub incident_id: Option<Uuid>,
+    pub assigned_incident_id: Option<Uuid>,
     pub distance_passed_km: Option<f64>,
     pub distance_remaining_km: Option<f64>,
+    pub current_capacity: Option<i32>,
 }
 
 pub async fn create(
@@ -121,8 +130,8 @@ pub async fn create(
     let now = Utc::now();
     let resource = Resource {
         id: Uuid::new_v4(),
-        center_id: input.center_id,
-        incident_id: None,
+        owner_center_id: input.owner_center_id,
+        assigned_incident_id: None,
         resource_type: input.resource_type,
         unit_identifier: input.unit_identifier.trim().to_string(),
         status: ResourceStatus::EnRoute,
@@ -130,6 +139,8 @@ pub async fn create(
         distance_remaining_km: 0.0,
         latitude: input.latitude,
         longitude: input.longitude,
+        total_capacity: input.total_capacity,
+        current_capacity: input.total_capacity,
         created_at: now,
         updated_at: now,
         server_synced_at: None,
@@ -222,13 +233,13 @@ impl ListResourcesQuery {
         {
             return false;
         }
-        if let Some(center_id) = self.center_id
-            && resource.center_id != Some(center_id)
+        if let Some(owner_center_id) = self.owner_center_id
+            && resource.owner_center_id != owner_center_id
         {
             return false;
         }
-        if let Some(incident_id) = self.incident_id
-            && resource.incident_id != Some(incident_id)
+        if let Some(assigned_incident_id) = self.assigned_incident_id
+            && resource.assigned_incident_id != Some(assigned_incident_id)
         {
             return false;
         }
@@ -255,12 +266,15 @@ async fn update_status_in_memory(
     let resource = resources.get_mut(&id).ok_or(ApiError::NotFound)?;
     let previous_status = resource.status;
     resource.status = update.status;
-    resource.incident_id = update.incident_id;
+    resource.assigned_incident_id = update.assigned_incident_id;
     if let Some(passed) = update.distance_passed_km {
         resource.distance_passed_km = passed;
     }
     if let Some(remaining) = update.distance_remaining_km {
         resource.distance_remaining_km = remaining;
+    }
+    if let Some(cap) = update.current_capacity {
+        resource.current_capacity = cap;
     }
     resource.updated_at = Utc::now();
     let snapshot = resource.clone();
@@ -276,26 +290,36 @@ pub(crate) async fn insert_postgres(
 ) -> Result<(), ApiError> {
     sqlx::query(
         r#"INSERT INTO resources (
-            id, center_id, incident_id, resource_type, unit_identifier,
+            id, owner_center_id, assigned_incident_id, resource_type, unit_identifier,
             status, distance_passed_km, distance_remaining_km,
-            current_location, created_at, updated_at, server_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
-                  ST_SetSRID(ST_MakePoint($9, $10), 4326)::geography,
-                  $11, $12, $13)"#,
+            current_latitude, current_longitude, total_capacity, current_capacity,
+            created_at, updated_at, server_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"#,
     )
     .bind(resource.id)
-    .bind(resource.center_id)
-    .bind(resource.incident_id)
+    .bind(resource.owner_center_id)
+    .bind(resource.assigned_incident_id)
     .bind(
         serde_json::to_value(resource.resource_type)
-            .map_err(|err| ApiError::Internal(err.to_string()))?,
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
     )
     .bind(&resource.unit_identifier)
-    .bind(serde_json::to_value(resource.status).map_err(|err| ApiError::Internal(err.to_string()))?)
+    .bind(
+        serde_json::to_value(resource.status)
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+    )
     .bind(resource.distance_passed_km)
     .bind(resource.distance_remaining_km)
-    .bind(resource.longitude)
     .bind(resource.latitude)
+    .bind(resource.longitude)
+    .bind(resource.total_capacity)
+    .bind(resource.current_capacity)
     .bind(resource.created_at)
     .bind(resource.updated_at)
     .bind(resource.server_synced_at)
@@ -310,10 +334,10 @@ pub(crate) async fn list_postgres(
 ) -> Result<Vec<Resource>, ApiError> {
     query.validate()?;
     let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new(
-        r#"SELECT id, center_id, incident_id, resource_type, unit_identifier,
+        r#"SELECT id, owner_center_id, assigned_incident_id, resource_type, unit_identifier,
                   status, distance_passed_km, distance_remaining_km,
-                  COALESCE(ST_Y(current_location::geometry), 0.0) AS latitude,
-                  COALESCE(ST_X(current_location::geometry), 0.0) AS longitude,
+                  current_latitude AS latitude, current_longitude AS longitude,
+                  total_capacity, current_capacity,
                   created_at, updated_at, server_synced_at
            FROM resources"#,
     );
@@ -321,22 +345,30 @@ pub(crate) async fn list_postgres(
     if let Some(status) = query.status {
         builder.push(" AND status = ");
         builder.push_bind(
-            serde_json::to_value(status).map_err(|err| ApiError::Internal(err.to_string()))?,
+            serde_json::to_value(status)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
         );
     }
     if let Some(kind) = query.resource_type {
         builder.push(" AND resource_type = ");
         builder.push_bind(
-            serde_json::to_value(kind).map_err(|err| ApiError::Internal(err.to_string()))?,
+            serde_json::to_value(kind)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
         );
     }
-    if let Some(center_id) = query.center_id {
-        builder.push(" AND center_id = ");
-        builder.push_bind(center_id);
+    if let Some(owner_center_id) = query.owner_center_id {
+        builder.push(" AND owner_center_id = ");
+        builder.push_bind(owner_center_id);
     }
-    if let Some(incident_id) = query.incident_id {
-        builder.push(" AND incident_id = ");
-        builder.push_bind(incident_id);
+    if let Some(assigned_incident_id) = query.assigned_incident_id {
+        builder.push(" AND assigned_incident_id = ");
+        builder.push_bind(assigned_incident_id);
     }
     builder.push(" ORDER BY updated_at ASC");
     if let Some(limit) = query.limit {
@@ -366,10 +398,10 @@ async fn update_status_postgres(
 ) -> Result<Json<Resource>, ApiError> {
     let mut tx = pool.begin().await?;
     let existing = sqlx::query_as::<_, ResourceRow>(
-        r#"SELECT id, center_id, incident_id, resource_type, unit_identifier,
+        r#"SELECT id, owner_center_id, assigned_incident_id, resource_type, unit_identifier,
                   status, distance_passed_km, distance_remaining_km,
-                  COALESCE(ST_Y(current_location::geometry), 0.0) AS latitude,
-                  COALESCE(ST_X(current_location::geometry), 0.0) AS longitude,
+                  current_latitude AS latitude, current_longitude AS longitude,
+                  total_capacity, current_capacity,
                   created_at, updated_at, server_synced_at
            FROM resources WHERE id = $1 FOR UPDATE"#,
     )
@@ -386,16 +418,24 @@ async fn update_status_postgres(
     sqlx::query(
         r#"UPDATE resources
            SET status = $1,
-               incident_id = COALESCE($2, incident_id),
+               assigned_incident_id = COALESCE($2, assigned_incident_id),
                distance_passed_km = COALESCE($3, distance_passed_km),
                distance_remaining_km = COALESCE($4, distance_remaining_km),
-               updated_at = $5
-           WHERE id = $6"#,
+               current_capacity = COALESCE($5, current_capacity),
+               updated_at = $6
+           WHERE id = $7"#,
     )
-    .bind(serde_json::to_value(update.status).map_err(|err| ApiError::Internal(err.to_string()))?)
-    .bind(update.incident_id)
+    .bind(
+        serde_json::to_value(update.status)
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+    )
+    .bind(update.assigned_incident_id)
     .bind(update.distance_passed_km)
     .bind(update.distance_remaining_km)
+    .bind(update.current_capacity)
     .bind(now)
     .bind(id)
     .execute(&mut *tx)
@@ -403,10 +443,10 @@ async fn update_status_postgres(
     tx.commit().await?;
 
     let row = sqlx::query_as::<_, ResourceRow>(
-        r#"SELECT id, center_id, incident_id, resource_type, unit_identifier,
+        r#"SELECT id, owner_center_id, assigned_incident_id, resource_type, unit_identifier,
                   status, distance_passed_km, distance_remaining_km,
-                  COALESCE(ST_Y(current_location::geometry), 0.0) AS latitude,
-                  COALESCE(ST_X(current_location::geometry), 0.0) AS longitude,
+                  current_latitude AS latitude, current_longitude AS longitude,
+                  total_capacity, current_capacity,
                   created_at, updated_at, server_synced_at
            FROM resources WHERE id = $1"#,
     )
@@ -441,8 +481,8 @@ fn fire_status_hook(state: &AppState, id: Uuid, previous: ResourceStatus, curren
 #[derive(sqlx::FromRow)]
 pub struct ResourceRow {
     pub id: Uuid,
-    pub center_id: Option<Uuid>,
-    pub incident_id: Option<Uuid>,
+    pub owner_center_id: Uuid,
+    pub assigned_incident_id: Option<Uuid>,
     pub resource_type: String,
     pub unit_identifier: String,
     pub status: String,
@@ -450,6 +490,8 @@ pub struct ResourceRow {
     pub distance_remaining_km: f64,
     pub latitude: f64,
     pub longitude: f64,
+    pub total_capacity: i32,
+    pub current_capacity: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub server_synced_at: Option<DateTime<Utc>>,
@@ -472,12 +514,18 @@ pub(crate) async fn dispatch_link_postgres(
     sqlx::query(
         r#"UPDATE resources
            SET status = $1,
-               incident_id = $2,
+               assigned_incident_id = $2,
                distance_remaining_km = $3,
                updated_at = $4
            WHERE id = $5"#,
     )
-    .bind(serde_json::to_value(new_status).map_err(|err| ApiError::Internal(err.to_string()))?)
+    .bind(
+        serde_json::to_value(new_status)
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+    )
     .bind(incident_id)
     .bind(distance_remaining_km)
     .bind(now)
@@ -491,8 +539,8 @@ impl From<ResourceRow> for Resource {
     fn from(row: ResourceRow) -> Self {
         Resource {
             id: row.id,
-            center_id: row.center_id,
-            incident_id: row.incident_id,
+            owner_center_id: row.owner_center_id,
+            assigned_incident_id: row.assigned_incident_id,
             resource_type: serde_json::from_str(&row.resource_type)
                 .or_else(|_| serde_json::from_str(&format!("\"{}\"", row.resource_type)))
                 .unwrap_or(ResourceType::Ambulance),
@@ -504,6 +552,8 @@ impl From<ResourceRow> for Resource {
             distance_remaining_km: row.distance_remaining_km,
             latitude: row.latitude,
             longitude: row.longitude,
+            total_capacity: row.total_capacity,
+            current_capacity: row.current_capacity,
             created_at: row.created_at,
             updated_at: row.updated_at,
             server_synced_at: row.server_synced_at,

@@ -42,10 +42,7 @@ use crate::state::AppState;
 pub enum FlushKind {
     Incident,
     Resource,
-    CommandCenter,
-    HelperTeam,
-    AssistanceRequest,
-    HelperAllocation,
+    Center,
 }
 
 impl FlushKind {
@@ -53,10 +50,7 @@ impl FlushKind {
         match self {
             FlushKind::Incident => "incidents",
             FlushKind::Resource => "resources",
-            FlushKind::CommandCenter => "command_centers",
-            FlushKind::HelperTeam => "helper_teams",
-            FlushKind::AssistanceRequest => "assistance_requests",
-            FlushKind::HelperAllocation => "helper_allocations",
+            FlushKind::Center => "centers",
         }
     }
 
@@ -258,24 +252,9 @@ async fn apply_in_memory(state: &AppState, marks: &[FlushMark], flushed_at: Date
                     resource.server_synced_at = Some(flushed_at);
                 }
             }
-            FlushKind::CommandCenter => {
-                if let Some(center) = state.command_centers.write().await.get_mut(&mark.id) {
+            FlushKind::Center => {
+                if let Some(center) = state.centers.write().await.get_mut(&mark.id) {
                     center.server_synced_at = Some(flushed_at);
-                }
-            }
-            FlushKind::HelperTeam => {
-                if let Some(team) = state.helper_teams.write().await.get_mut(&mark.id) {
-                    team.server_synced_at = Some(flushed_at);
-                }
-            }
-            FlushKind::AssistanceRequest => {
-                if let Some(req) = state.assistance_requests.write().await.get_mut(&mark.id) {
-                    req.server_synced_at = Some(flushed_at);
-                }
-            }
-            FlushKind::HelperAllocation => {
-                if let Some(alloc) = state.helper_allocations.write().await.get_mut(&mark.id) {
-                    alloc.server_synced_at = Some(flushed_at);
                 }
             }
         }

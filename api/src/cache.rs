@@ -10,7 +10,7 @@
 use redis::AsyncCommands;
 use uuid::Uuid;
 
-use crate::features::command_centers::CommandCenter;
+use crate::features::centers::Center;
 
 pub const DISPATCH_TTL_SECS: u64 = 60;
 
@@ -26,7 +26,7 @@ fn quantise(value: f64) -> i32 {
 /// coordinates match AND the entry has not expired.
 pub async fn nearest_center(
     redis: Option<&redis::Client>,
-    centers: &[CommandCenter],
+    centers: &[Center],
     latitude: f64,
     longitude: f64,
 ) -> Uuid {
@@ -63,7 +63,7 @@ pub async fn nearest_center(
     answer
 }
 
-fn compute_nearest_center(centers: &[CommandCenter], latitude: f64, longitude: f64) -> Uuid {
+fn compute_nearest_center(centers: &[Center], latitude: f64, longitude: f64) -> Uuid {
     let mut best_id = Uuid::nil();
     let mut best_km = f64::INFINITY;
     for center in centers {
@@ -104,11 +104,11 @@ pub async fn clear_for_tests(redis: Option<&redis::Client>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::command_centers::seed_command_centers;
+    use crate::features::centers::seed_centers;
 
     #[tokio::test]
     async fn cache_returns_same_answer_for_clustered_coordinates() {
-        let centers = seed_command_centers();
+        let centers = seed_centers();
         // Since we test without redis locally or via mock, it should fallback
         // to direct computation correctly.
         let first = nearest_center(None, &centers, 23.8101, 90.4126).await;
@@ -120,7 +120,7 @@ mod tests {
     #[tokio::test]
     async fn cache_clear_works() {
         clear_for_tests(None).await;
-        let centers = seed_command_centers();
+        let centers = seed_centers();
         let first = nearest_center(None, &centers, 23.0, 90.0).await;
         clear_for_tests(None).await;
         let second = nearest_center(None, &centers, 23.0, 90.0).await;

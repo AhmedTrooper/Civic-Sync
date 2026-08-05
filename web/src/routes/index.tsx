@@ -1,14 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	Activity,
 	AlertCircle,
+	Loader2,
 	MapPin,
 	Radio,
 	ShieldAlert,
 	Truck,
 	Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+
+const DashboardMap = lazy(() => import("#/components/DashboardMap"));
 
 interface Incident {
 	id: string;
@@ -17,16 +20,21 @@ interface Incident {
 	severity_level: number;
 	affected_people: number;
 	casualty_count: number;
+	latitude: number;
+	longitude: number;
 }
 
 interface Center {
 	id: string;
 	name: string;
 	is_core_center: boolean;
+	latitude: number;
+	longitude: number;
 }
 
 interface Resource {
 	id: string;
+	status: string;
 }
 
 interface LoaderData {
@@ -46,10 +54,10 @@ export const Route = createFileRoute("/")({
 			const incidents = incidentsRes?.ok ? await incidentsRes.json() : [];
 			const centers = centersRes?.ok ? await centersRes.json() : [];
 			const resources = resourcesRes?.ok ? await resourcesRes.json() : [];
-			return { 
-				incidents: Array.isArray(incidents) ? incidents : [], 
-				centers: Array.isArray(centers) ? centers : [], 
-				resources: Array.isArray(resources) ? resources : [] 
+			return {
+				incidents: Array.isArray(incidents) ? incidents : [],
+				centers: Array.isArray(centers) ? centers : [],
+				resources: Array.isArray(resources) ? resources : [],
 			};
 		} catch (_e) {
 			return { incidents: [], centers: [], resources: [] };
@@ -61,6 +69,11 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
 	const initialData = Route.useLoaderData();
 	const [data, setData] = useState<LoaderData>(initialData);
+	const [isClient, setIsClient] = useState(false);
+
+	useEffect(() => {
+		setIsClient(true);
+	}, []);
 
 	useEffect(() => {
 		const interval = setInterval(async () => {
@@ -73,10 +86,10 @@ function Dashboard() {
 				const incidents = incidentsRes.ok ? await incidentsRes.json() : [];
 				const centers = centersRes.ok ? await centersRes.json() : [];
 				const resources = resourcesRes.ok ? await resourcesRes.json() : [];
-				setData({ 
-					incidents: Array.isArray(incidents) ? incidents : [], 
-					centers: Array.isArray(centers) ? centers : [], 
-					resources: Array.isArray(resources) ? resources : [] 
+				setData({
+					incidents: Array.isArray(incidents) ? incidents : [],
+					centers: Array.isArray(centers) ? centers : [],
+					resources: Array.isArray(resources) ? resources : [],
 				});
 			} catch (_e) {
 				// ignore network errors on poll
@@ -112,17 +125,18 @@ function Dashboard() {
 							</p>
 						</div>
 					</div>
-					<div className="flex items-center gap-4 bg-white/50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-800 backdrop-blur-xl transition-colors">
-						<button
-							type="button"
-							className="px-4 py-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition-colors"
+					<div className="flex items-center gap-3">
+						<Link
+							to="/admin"
+							className="px-4 py-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition-colors bg-white/50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800"
 						>
 							<Radio className="w-4 h-4 inline-block mr-2" />
-							Manual Override
-						</button>
+							Admin Panel
+						</Link>
 					</div>
 				</header>
 
+				{/* Stat Cards */}
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 					<StatCard
 						title="ACTIVE INCIDENTS"
@@ -145,6 +159,34 @@ function Dashboard() {
 					/>
 				</div>
 
+				{/* Global Map */}
+				<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm h-[400px] relative">
+					{isClient ? (
+						<Suspense
+							fallback={
+								<div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+									<Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+								</div>
+							}
+						>
+							<DashboardMap centers={data.centers} incidents={data.incidents} />
+						</Suspense>
+					) : (
+						<div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+							<Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+						</div>
+					)}
+					<div className="absolute top-4 left-4 z-[400] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+						<div className="flex items-center gap-2">
+							<MapPin className="w-4 h-4 text-indigo-500" />
+							<span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+								National Emergency Grid
+							</span>
+						</div>
+					</div>
+				</div>
+
+				{/* Operations + Hub Status */}
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 					<div className="lg:col-span-2 space-y-6">
 						<h2 className="text-xl font-bold tracking-tight flex items-center gap-3 text-slate-800 dark:text-slate-100">
@@ -153,16 +195,18 @@ function Dashboard() {
 						</h2>
 						<div className="grid gap-4">
 							{data.incidents.slice(0, 5).map((inc) => (
-								<div
+								<Link
+									to="/incidents/$incidentId"
+									params={{ incidentId: inc.id }}
 									key={inc.id}
-									className="relative group overflow-hidden bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50 p-6 rounded-3xl hover:bg-slate-50 dark:hover:bg-slate-800/50 shadow-sm dark:shadow-none transition-all duration-300"
+									className="block relative group overflow-hidden bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50 p-6 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 shadow-sm dark:shadow-none transition-all duration-300"
 								>
 									<div
 										className={`absolute top-0 left-0 w-1 h-full ${inc.severity_level >= 4 ? "bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.6)]" : "bg-orange-500"}`}
 									/>
 									<div className="flex justify-between items-start">
 										<div>
-											<h3 className="text-lg font-bold text-slate-900 dark:text-slate-200">
+											<h3 className="text-lg font-bold text-slate-900 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
 												{inc.title}
 											</h3>
 											<p className="text-sm text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-4">
@@ -179,10 +223,10 @@ function Dashboard() {
 											L{inc.severity_level}
 										</div>
 									</div>
-								</div>
+								</Link>
 							))}
 							{data.incidents.length === 0 && (
-								<div className="p-8 text-center text-slate-500 bg-white/50 dark:bg-slate-900/30 rounded-3xl border border-slate-300 dark:border-slate-800/50 border-dashed">
+								<div className="p-8 text-center text-slate-500 bg-white/50 dark:bg-slate-900/30 rounded-2xl border border-slate-300 dark:border-slate-800/50 border-dashed">
 									No active incidents detected on grid.
 								</div>
 							)}
@@ -194,13 +238,15 @@ function Dashboard() {
 							<Radio className="w-5 h-5 text-fuchsia-500 dark:text-fuchsia-400" />
 							Hub Status
 						</h2>
-						<div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6 space-y-4 shadow-sm dark:shadow-none transition-colors">
-							{data.centers.slice(0, 6).map((center) => (
-								<div
+						<div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50 rounded-2xl p-6 space-y-4 shadow-sm dark:shadow-none transition-colors">
+							{data.centers.map((center) => (
+								<Link
+									to="/centers/$centerId"
+									params={{ centerId: center.id }}
 									key={center.id}
-									className="flex items-center justify-between group"
+									className="flex items-center justify-between group cursor-pointer"
 								>
-									<span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+									<span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
 										{center.name}
 									</span>
 									<div className="flex items-center gap-2">
@@ -211,7 +257,7 @@ function Dashboard() {
 										)}
 										<div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
 									</div>
-								</div>
+								</Link>
 							))}
 							{data.centers.length === 0 && (
 								<div className="text-sm text-slate-500 text-center py-4">
@@ -245,7 +291,7 @@ function StatCard({ title, value, icon, color, pulse }: StatCardProps) {
 
 	return (
 		<div
-			className={`relative overflow-hidden bg-gradient-to-br ${colorMap[color]} border p-6 rounded-3xl backdrop-blur-sm group transition-colors`}
+			className={`relative overflow-hidden bg-gradient-to-br ${colorMap[color]} border p-6 rounded-2xl backdrop-blur-sm group transition-colors`}
 		>
 			<div className="flex items-center justify-between mb-4">
 				<span className="text-xs font-bold uppercase tracking-widest opacity-80">

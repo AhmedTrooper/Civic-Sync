@@ -7,9 +7,8 @@ use uuid::Uuid;
 use crate::{
     config::Config,
     features::{
-        assistance_requests::AssistanceRequest, command_centers::CommandCenter, flush::FlushMark,
-        helper_allocations::HelperAllocation, helper_teams::HelperTeam, incidents::Incident,
-        orchestrator::Orchestrator, resources::Resource, triggers::TriggerEvent,
+        centers::Center, flush::FlushMark, incidents::Incident, orchestrator::Orchestrator,
+        resources::Resource, triggers::TriggerEvent,
     },
 };
 
@@ -19,10 +18,7 @@ pub struct AppState {
     pub database: Option<PgPool>,
     pub incidents: Arc<RwLock<HashMap<Uuid, Incident>>>,
     pub resources: Arc<RwLock<HashMap<Uuid, Resource>>>,
-    pub command_centers: Arc<RwLock<HashMap<Uuid, CommandCenter>>>,
-    pub helper_teams: Arc<RwLock<HashMap<Uuid, HelperTeam>>>,
-    pub assistance_requests: Arc<RwLock<HashMap<Uuid, AssistanceRequest>>>,
-    pub helper_allocations: Arc<RwLock<HashMap<Uuid, HelperAllocation>>>,
+    pub centers: Arc<RwLock<HashMap<Uuid, Center>>>,
     pub redis: Option<redis::Client>,
     /// Optional AI orchestrator. `None` when `AiConfig::is_configured()` is
     /// false, i.e. the operator did not wire up an LLM. When `None`, the
@@ -57,7 +53,7 @@ impl AppState {
 
     /// Real entry point used by `main.rs` after `Config::from_env()`.
     pub fn with_config(database: Option<PgPool>, config: Arc<Config>) -> Self {
-        let command_centers = crate::features::command_centers::seed_command_centers()
+        let centers = crate::features::centers::seed_centers()
             .into_iter()
             .map(|center| (center.id, center))
             .collect::<HashMap<_, _>>();
@@ -81,10 +77,7 @@ impl AppState {
             redis,
             incidents: Arc::new(RwLock::new(HashMap::new())),
             resources: Arc::new(RwLock::new(HashMap::new())),
-            command_centers: Arc::new(RwLock::new(command_centers)),
-            helper_teams: Arc::new(RwLock::new(HashMap::new())),
-            assistance_requests: Arc::new(RwLock::new(HashMap::new())),
-            helper_allocations: Arc::new(RwLock::new(HashMap::new())),
+            centers: Arc::new(RwLock::new(centers)),
             orchestrator,
             triggers_tx,
             flush_tx,

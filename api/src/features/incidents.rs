@@ -10,10 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     error::ApiError,
-    features::{
-        flush::{FlushKind, FlushMark},
-        resources::ResourceType,
-    },
+    features::flush::{FlushKind, FlushMark},
     state::AppState,
 };
 
@@ -29,14 +26,13 @@ pub enum IncidentStatus {
 pub struct Incident {
     pub id: Uuid,
     pub title: String,
+    pub primary_center_id: Uuid,
     pub severity_level: u8,
     pub affected_people: u32,
     pub casualty_count: u32,
     pub latitude: f64,
     pub longitude: f64,
     pub status: IncidentStatus,
-    #[serde(default)]
-    pub required_resource_types: Vec<ResourceType>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub server_synced_at: Option<DateTime<Utc>>,
@@ -50,8 +46,6 @@ pub struct CreateIncident {
     pub casualty_count: u32,
     pub latitude: f64,
     pub longitude: f64,
-    #[serde(default)]
-    pub required_resource_types: Vec<ResourceType>,
 }
 
 impl CreateIncident {
@@ -105,7 +99,6 @@ pub struct UpdateIncident {
     pub affected_people: Option<u32>,
     pub casualty_count: Option<u32>,
     pub status: Option<IncidentStatus>,
-    pub required_resource_types: Option<Vec<ResourceType>>,
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
 }
@@ -155,10 +148,20 @@ impl UpdateIncident {
             && self.affected_people.is_none()
             && self.casualty_count.is_none()
             && self.status.is_none()
-            && self.required_resource_types.is_none()
             && self.latitude.is_none()
             && self.longitude.is_none()
     }
+}
+
+fn haversine_distance(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+    let r = 6371.0;
+    let d_lat = (lat2 - lat1).to_radians();
+    let d_lon = (lon2 - lon1).to_radians();
+    let a = ((d_lat / 2.0).sin().powi(2)
+        + lat1.to_radians().cos() * lat2.to_radians().cos() * (d_lon / 2.0).sin().powi(2))
+    .clamp(0.0, 1.0);
+    let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+    r * c
 }
 
 pub async fn create(
@@ -167,16 +170,42 @@ pub async fn create(
 ) -> Result<impl IntoResponse, ApiError> {
     input.validate()?;
     let now = Utc::now();
+    let centers = match &state.database {
+        Some(pool) => crate::features::centers::list_all_postgres(pool).await?,
+        None => state
+            .centers
+            .read()
+            .await
+            .values()
+            .cloned()
+            .collect::<Vec<_>>(),
+    };
+
+    let mut closest_center_id = Uuid::nil();
+    let mut min_dist = f64::MAX;
+    for center in &centers {
+        let dist = haversine_distance(
+            input.latitude,
+            input.longitude,
+            center.latitude,
+            center.longitude,
+        );
+        if dist < min_dist {
+            min_dist = dist;
+            closest_center_id = center.id;
+        }
+    }
+
     let incident = Incident {
         id: Uuid::new_v4(),
         title: input.title.trim().to_string(),
+        primary_center_id: closest_center_id,
         severity_level: input.severity_level,
         affected_people: input.affected_people,
         casualty_count: input.casualty_count,
         latitude: input.latitude,
         longitude: input.longitude,
         status: IncidentStatus::Active,
-        required_resource_types: input.required_resource_types,
         created_at: now,
         updated_at: now,
         server_synced_at: None,
@@ -409,9 +438,6 @@ async fn update_in_memory(
     if let Some(status) = update.status {
         incident.status = status;
     }
-    if let Some(kinds) = update.required_resource_types {
-        incident.required_resource_types = kinds;
-    }
     if let Some(lat) = update.latitude {
         incident.latitude = lat;
     }
@@ -499,34 +525,28 @@ pub(crate) async fn insert_postgres(
     pool: &sqlx::PgPool,
     incident: &Incident,
 ) -> Result<(), ApiError> {
-    let resource_types: Vec<String> = incident
-        .required_resource_types
-        .iter()
-        .map(|kind| {
-            serde_json::to_value(kind)
-                .ok()
-                .and_then(|v| v.as_str().map(|s| s.to_string()))
-                .unwrap_or_default()
-        })
-        .collect();
     sqlx::query(
         r#"INSERT INTO incidents (
-            id, title, severity_level, affected_people, casualty_count,
-            location, status, required_resource_types,
+            id, title, primary_center_id, severity_level, affected_people, casualty_count,
+            latitude, longitude, status,
             created_at, updated_at, server_synced_at
-        ) VALUES ($1, $2, $3, $4, $5,
-                  ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
-                  $8, $9, $10, $11, $12)"#,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"#,
     )
     .bind(incident.id)
     .bind(&incident.title)
+    .bind(incident.primary_center_id)
     .bind(i32::from(incident.severity_level))
     .bind(incident.affected_people as i32)
     .bind(incident.casualty_count as i32)
-    .bind(incident.longitude)
     .bind(incident.latitude)
-    .bind(serde_json::to_value(incident.status).map_err(|err| ApiError::Internal(err.to_string()))?)
-    .bind(resource_types)
+    .bind(incident.longitude)
+    .bind(
+        serde_json::to_value(incident.status)
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+    )
     .bind(incident.created_at)
     .bind(incident.updated_at)
     .bind(incident.server_synced_at)
@@ -541,10 +561,8 @@ pub(crate) async fn list_postgres(
 ) -> Result<Vec<Incident>, ApiError> {
     query.validate()?;
     let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new(
-        r#"SELECT id, title, severity_level, affected_people, casualty_count,
-                  ST_Y(location::geometry) AS latitude,
-                  ST_X(location::geometry) AS longitude,
-                  status, required_resource_types,
+        r#"SELECT id, title, primary_center_id, severity_level, affected_people, casualty_count,
+                  latitude, longitude, status,
                   created_at, updated_at, server_synced_at
            FROM incidents"#,
     );
@@ -552,7 +570,11 @@ pub(crate) async fn list_postgres(
     if let Some(status) = query.status {
         builder.push(" AND status = ");
         builder.push_bind(
-            serde_json::to_value(status).map_err(|err| ApiError::Internal(err.to_string()))?,
+            serde_json::to_value(status)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
         );
     }
     if let Some(severity) = query.severity_level {
@@ -608,10 +630,8 @@ async fn update_postgres(
     let _ = state; // re-export hook future use; caller enqueues the flush mark.
     let mut tx = pool.begin().await?;
     let existing = sqlx::query_as::<_, IncidentRow>(
-        r#"SELECT id, title, severity_level, affected_people, casualty_count,
-                  ST_Y(location::geometry) AS latitude,
-                  ST_X(location::geometry) AS longitude,
-                  status, required_resource_types,
+        r#"SELECT id, title, primary_center_id, severity_level, affected_people, casualty_count,
+                  latitude, longitude, status,
                   created_at, updated_at, server_synced_at
            FROM incidents WHERE id = $1 FOR UPDATE"#,
     )
@@ -621,26 +641,13 @@ async fn update_postgres(
     .ok_or(ApiError::NotFound)?;
     let previous = Incident::from(existing);
 
-    // Serialise the optional `required_resource_types` into the
-    // `Vec<String>` shape the Postgres column stores.
-    let resource_types: Option<Vec<String>> =
-        update.required_resource_types.as_ref().map(|kinds| {
-            kinds
-                .iter()
-                .map(|kind| {
-                    serde_json::to_value(kind)
-                        .ok()
-                        .and_then(|v| v.as_str().map(|s| s.to_string()))
-                        .unwrap_or_default()
-                })
-                .collect()
-        });
-    let status_json = match update.status {
-        Some(status) => {
-            Some(serde_json::to_value(status).map_err(|err| ApiError::Internal(err.to_string()))?)
-        }
-        None => None,
-    };
+    let status_json = update.status.map(|status| {
+        serde_json::to_value(status)
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string()
+    });
 
     let now = Utc::now();
     sqlx::query(
@@ -650,21 +657,16 @@ async fn update_postgres(
                affected_people = COALESCE($3, affected_people),
                casualty_count = COALESCE($4, casualty_count),
                status = COALESCE($5, status),
-               required_resource_types = COALESCE($6, required_resource_types),
-               location = CASE
-                   WHEN $7::double precision IS NOT NULL AND $8::double precision IS NOT NULL
-                       THEN ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography
-                   ELSE location
-               END,
-               updated_at = $9
-           WHERE id = $10"#,
+               latitude = COALESCE($6, latitude),
+               longitude = COALESCE($7, longitude),
+               updated_at = $8
+           WHERE id = $9"#,
     )
     .bind(update.title.as_deref())
     .bind(update.severity_level.map(i32::from))
     .bind(update.affected_people.map(|v| v as i32))
     .bind(update.casualty_count.map(|v| v as i32))
     .bind(status_json)
-    .bind(resource_types)
     .bind(update.latitude)
     .bind(update.longitude)
     .bind(now)
@@ -674,10 +676,8 @@ async fn update_postgres(
     tx.commit().await?;
 
     let row = sqlx::query_as::<_, IncidentRow>(
-        r#"SELECT id, title, severity_level, affected_people, casualty_count,
-                  ST_Y(location::geometry) AS latitude,
-                  ST_X(location::geometry) AS longitude,
-                  status, required_resource_types,
+        r#"SELECT id, title, primary_center_id, severity_level, affected_people, casualty_count,
+                  latitude, longitude, status,
                   created_at, updated_at, server_synced_at
            FROM incidents WHERE id = $1"#,
     )
@@ -692,13 +692,13 @@ async fn update_postgres(
 pub struct IncidentRow {
     pub id: Uuid,
     pub title: String,
+    pub primary_center_id: Uuid,
     pub severity_level: i32,
     pub affected_people: i32,
     pub casualty_count: i32,
     pub latitude: f64,
     pub longitude: f64,
     pub status: String,
-    pub required_resource_types: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub server_synced_at: Option<DateTime<Utc>>,
@@ -709,21 +709,16 @@ impl From<IncidentRow> for Incident {
         let status = serde_json::from_str(&row.status)
             .or_else(|_| serde_json::from_str(&format!("\"{}\"", row.status)))
             .unwrap_or(IncidentStatus::Active);
-        let required_resource_types = row
-            .required_resource_types
-            .into_iter()
-            .filter_map(|name| serde_json::from_value(serde_json::Value::String(name)).ok())
-            .collect();
         Incident {
             id: row.id,
             title: row.title,
+            primary_center_id: row.primary_center_id,
             severity_level: row.severity_level as u8,
             affected_people: row.affected_people as u32,
             casualty_count: row.casualty_count as u32,
             latitude: row.latitude,
             longitude: row.longitude,
             status,
-            required_resource_types,
             created_at: row.created_at,
             updated_at: row.updated_at,
             server_synced_at: row.server_synced_at,

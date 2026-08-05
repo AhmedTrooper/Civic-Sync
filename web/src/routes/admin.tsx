@@ -2,65 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
 	Activity,
 	AlertCircle,
-	Briefcase,
 	Database,
 	Flame,
 	Pause,
 	Play,
 	Plus,
 	Truck,
-	Users,
-	Wrench,
+	MapPin,
+	ShieldAlert,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-
-interface Resource {
-	id: string;
-	unit_identifier: string;
-	resource_type: string;
-	status: string;
-	latitude: number;
-	longitude: number;
-}
-
-interface HelperTeam {
-	id: string;
-	team_name: string;
-	total_members: number;
-	assigned_members: number;
-	status: string;
-}
-
-interface Incident {
-	id: string;
-	title: string;
-	status: string;
-	severity_level: number;
-	affected_people: number;
-	casualty_count: number;
-}
-
-interface AssistanceRequest {
-	id: string;
-	resource_id: string;
-	issue_description: string;
-	status: string;
-}
-
-interface HelperAllocation {
-	id: string;
-	helper_team_id: string;
-	incident_id: string | null;
-	assistance_request_id: string | null;
-	members_deployed: number;
-	status: string;
-}
-
-interface SimulationStatus {
-	paused: boolean;
-	generated: number;
-	tick_interval_seconds: number;
-}
+import { useEffect, useState } from "react";
+import { useAdminStore } from "../store/adminStore";
 
 export const Route = createFileRoute("/admin")({
 	component: AdminPanel,
@@ -68,24 +20,27 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPanel() {
 	const [activeTab, setActiveTab] = useState<
-		"ASSETS" | "TEAMS" | "ALLOCATIONS" | "SIMULATION"
+		"SIMULATION" | "ASSETS" | "CENTERS"
 	>("SIMULATION");
 
-	// Data States
-	const [resources, setResources] = useState<Resource[]>([]);
-	const [helperTeams, setHelperTeams] = useState<HelperTeam[]>([]);
-	const [incidents, setIncidents] = useState<Incident[]>([]);
-	const [assistanceRequests, setAssistanceRequests] = useState<
-		AssistanceRequest[]
-	>([]);
-	const [allocations, setAllocations] = useState<HelperAllocation[]>([]);
-	const [simStatus, setSimStatus] = useState<SimulationStatus | null>(null);
+	const { centers, incidents, resources, simStatus, fetchData } =
+		useAdminStore();
 
 	const [editingIncident, setEditingIncident] = useState<string | null>(null);
-	const [editIncidentForm, setEditIncidentForm] = useState({ severity_level: 5, affected_people: 0, casualty_count: 0, status: "ACTIVE" });
+	const [editIncidentForm, setEditIncidentForm] = useState({
+		severity_level: 5,
+		affected_people: 0,
+		casualty_count: 0,
+		status: "ACTIVE",
+	});
 
 	const [editingResource, setEditingResource] = useState<string | null>(null);
-	const [editResourceForm, setEditResourceForm] = useState({ status: "EN_ROUTE" });
+	const [editResourceForm, setEditResourceForm] = useState({
+		status: "EN_ROUTE",
+		current_capacity: 1,
+		latitude: 0,
+		longitude: 0,
+	});
 
 	// Form States
 	const [resourceForm, setResourceForm] = useState({
@@ -93,6 +48,8 @@ function AdminPanel() {
 		resource_type: "AMBULANCE",
 		latitude: 23.8103, // Dhaka defaults
 		longitude: 90.4125,
+		total_capacity: 1,
+		owner_center_id: "",
 	});
 
 	const [incidentForm, setIncidentForm] = useState({
@@ -104,68 +61,18 @@ function AdminPanel() {
 		longitude: 91.8687,
 	});
 
-	const [teamForm, setTeamForm] = useState({
-		team_name: "",
-		total_members: 10,
-		latitude: 23.8103,
-		longitude: 90.4125,
-	});
-
-	const [requestForm, setRequestForm] = useState({
-		resource_id: "",
-		issue_description: "",
-	});
-
-	const [allocationForm, setAllocationForm] = useState({
-		helper_team_id: "",
-		target_type: "INCIDENT", // INCIDENT or ASSISTANCE
-		target_id: "",
-		members_deployed: 1,
-	});
-
-	const fetchData = useCallback(async () => {
-		try {
-			const [resRes, teamRes, incRes, reqRes, allocRes, simRes] =
-				await Promise.all([
-					fetch("http://localhost:8080/api/v1/resources"),
-					fetch("http://localhost:8080/api/v1/helper-teams"),
-					fetch("http://localhost:8080/api/v1/incidents"),
-					fetch("http://localhost:8080/api/v1/assistance-requests"),
-					fetch("http://localhost:8080/api/v1/helper-allocations"),
-					fetch("http://localhost:8080/api/v1/admin/simulation"),
-				]);
-
-			if (resRes.ok) {
-				const data = await resRes.json();
-				setResources(Array.isArray(data) ? data : []);
-			}
-			if (teamRes.ok) {
-				const data = await teamRes.json();
-				setHelperTeams(Array.isArray(data) ? data : []);
-			}
-			if (incRes.ok) {
-				const data = await incRes.json();
-				setIncidents(Array.isArray(data) ? data : []);
-			}
-			if (reqRes.ok) {
-				const data = await reqRes.json();
-				setAssistanceRequests(Array.isArray(data) ? data : []);
-			}
-			if (allocRes.ok) {
-				const data = await allocRes.json();
-				setAllocations(Array.isArray(data) ? data : []);
-			}
-			if (simRes.ok) setSimStatus(await simRes.json());
-		} catch (_e) {
-			// Ignore network errors on polling
-		}
-	}, []);
-
 	useEffect(() => {
 		fetchData();
 		const interval = setInterval(fetchData, 5000);
 		return () => clearInterval(interval);
 	}, [fetchData]);
+
+	// Initialize the first center in the form if not selected
+	useEffect(() => {
+		if (centers.length > 0 && !resourceForm.owner_center_id) {
+			setResourceForm((prev) => ({ ...prev, owner_center_id: centers[0].id }));
+		}
+	}, [centers, resourceForm.owner_center_id]);
 
 	const toggleSimulation = async () => {
 		if (!simStatus) return;
@@ -173,7 +80,10 @@ function AdminPanel() {
 			const endpoint = simStatus.paused
 				? "http://localhost:8080/api/v1/admin/simulation/resume"
 				: "http://localhost:8080/api/v1/admin/simulation/pause";
-			const res = await fetch(endpoint, { method: "POST", headers: { "x-role": "admin" } });
+			const res = await fetch(endpoint, {
+				method: "POST",
+				headers: { "x-role": "admin" },
+			});
 			if (res.ok) fetchData();
 		} catch (err) {
 			console.error(err);
@@ -191,7 +101,8 @@ function AdminPanel() {
 					resource_type: resourceForm.resource_type,
 					latitude: Number(resourceForm.latitude),
 					longitude: Number(resourceForm.longitude),
-					center_id: null,
+					total_capacity: Number(resourceForm.total_capacity),
+					owner_center_id: resourceForm.owner_center_id,
 				}),
 			});
 			if (res.ok) {
@@ -221,7 +132,6 @@ function AdminPanel() {
 						casualty_count: Number(incidentForm.casualty_count),
 						latitude: Number(incidentForm.latitude),
 						longitude: Number(incidentForm.longitude),
-						required_resource_types: [],
 					}),
 				},
 			);
@@ -232,104 +142,6 @@ function AdminPanel() {
 			} else {
 				const errText = await res.text();
 				alert(`Failed to inject incident. Error: ${errText}`);
-			}
-		} catch (err) {
-			console.error(err);
-		}
-	};
-
-	const handleSubmitTeam = async (e: React.FormEvent) => {
-		e.preventDefault();
-		try {
-			const res = await fetch("http://localhost:8080/api/v1/helper-teams", {
-				method: "POST",
-				headers: { "Content-Type": "application/json", "x-role": "admin" },
-				body: JSON.stringify({
-					team_name: teamForm.team_name,
-					total_members: Number(teamForm.total_members),
-					latitude: Number(teamForm.latitude),
-					longitude: Number(teamForm.longitude),
-					center_id: null,
-				}),
-			});
-			if (res.ok) {
-				setTeamForm({ ...teamForm, team_name: "" });
-				fetchData();
-			} else {
-				const errText = await res.text();
-				alert(`Failed to register team. Error: ${errText}`);
-			}
-		} catch (err) {
-			console.error(err);
-		}
-	};
-
-	const handleSubmitRequest = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!requestForm.resource_id) {
-			alert("Please select a resource.");
-			return;
-		}
-		try {
-			const res = await fetch(
-				"http://localhost:8080/api/v1/assistance-requests",
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json", "x-role": "admin" },
-					body: JSON.stringify({
-						resource_id: requestForm.resource_id,
-						issue_description: requestForm.issue_description,
-					}),
-				},
-			);
-			if (res.ok) {
-				setRequestForm({ resource_id: "", issue_description: "" });
-				fetchData();
-			} else {
-				const errText = await res.text();
-				alert(`Failed to log request. Error: ${errText}`);
-			}
-		} catch (err) {
-			console.error(err);
-		}
-	};
-
-	const handleSubmitAllocation = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!allocationForm.helper_team_id) {
-			alert("Please select a team to deploy.");
-			return;
-		}
-		if (!allocationForm.target_id) {
-			alert("Please select a target mission.");
-			return;
-		}
-		try {
-			const res = await fetch(
-				"http://localhost:8080/api/v1/helper-allocations",
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json", "x-role": "admin" },
-					body: JSON.stringify({
-						helper_team_id: allocationForm.helper_team_id,
-						incident_id:
-							allocationForm.target_type === "INCIDENT"
-								? allocationForm.target_id
-								: null,
-						assistance_request_id:
-							allocationForm.target_type === "ASSISTANCE"
-								? allocationForm.target_id
-								: null,
-						members_deployed: Number(allocationForm.members_deployed),
-					}),
-				},
-			);
-			if (res.ok) {
-				setAllocationForm({ ...allocationForm, members_deployed: 1 });
-				fetchData();
-			} else {
-				const errText = await res.text();
-				alert(`Failed to deploy team. Error: ${errText}`);
 			}
 		} catch (err) {
 			console.error(err);
@@ -361,13 +173,17 @@ function AdminPanel() {
 
 	const saveResourceUpdate = async (id: string) => {
 		try {
-			const res = await fetch(`http://localhost:8080/api/v1/resources/${id}/status`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json", "x-role": "admin" },
-				body: JSON.stringify({
-					status: editResourceForm.status,
-				}),
-			});
+			const res = await fetch(
+				`http://localhost:8080/api/v1/resources/${id}/status`,
+				{
+					method: "PATCH",
+					headers: { "Content-Type": "application/json", "x-role": "admin" },
+					body: JSON.stringify({
+						status: editResourceForm.status,
+						current_capacity: Number(editResourceForm.current_capacity),
+					}),
+				},
+			);
 			if (res.ok) {
 				setEditingResource(null);
 				fetchData();
@@ -432,16 +248,13 @@ function AdminPanel() {
 					{[
 						{ id: "SIMULATION", label: "Simulation & Crises", icon: Flame },
 						{ id: "ASSETS", label: "Grid Assets", icon: Truck },
-						{ id: "TEAMS", label: "Helper Teams", icon: Users },
-						{ id: "ALLOCATIONS", label: "Allocations & Support", icon: Wrench },
+						{ id: "CENTERS", label: "Centers", icon: MapPin },
 					].map((tab) => (
 						<button
 							type="button"
 							key={tab.id}
 							onClick={() =>
-								setActiveTab(
-									tab.id as "ASSETS" | "TEAMS" | "ALLOCATIONS" | "SIMULATION",
-								)
+								setActiveTab(tab.id as "ASSETS" | "SIMULATION" | "CENTERS")
 							}
 							className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
 								activeTab === tab.id
@@ -592,52 +405,137 @@ function AdminPanel() {
 									Active Incidents
 								</h2>
 								<div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2">
-									{incidents.map((inc) => (
-										<div
-											key={inc.id}
-											className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
-										>
-											{editingIncident === inc.id ? (
-												<div className="space-y-3">
-													<p className="font-bold">{inc.title}</p>
-													<div className="grid grid-cols-2 gap-2 text-xs">
-														<label className="block">Severity
-															<input type="number" min="1" max="5" value={editIncidentForm.severity_level} onChange={(e) => setEditIncidentForm({ ...editIncidentForm, severity_level: Number(e.target.value) })} className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1" />
-														</label>
-														<label className="block">Affected
-															<input type="number" min="0" value={editIncidentForm.affected_people} onChange={(e) => setEditIncidentForm({ ...editIncidentForm, affected_people: Number(e.target.value) })} className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1" />
-														</label>
-														<label className="block">Casualties
-															<input type="number" min="0" value={editIncidentForm.casualty_count} onChange={(e) => setEditIncidentForm({ ...editIncidentForm, casualty_count: Number(e.target.value) })} className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1" />
-														</label>
-														<label className="block">Status
-															<select value={editIncidentForm.status} onChange={(e) => setEditIncidentForm({ ...editIncidentForm, status: e.target.value })} className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1">
-																<option value="ACTIVE">ACTIVE</option>
-																<option value="RESOLVED">RESOLVED</option>
-															</select>
-														</label>
+									{incidents.map((inc) => {
+										const centerName =
+											centers.find((c) => c.id === inc.primary_center_id)
+												?.name || "Unknown";
+										return (
+											<div
+												key={inc.id}
+												className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
+											>
+												{editingIncident === inc.id ? (
+													<div className="space-y-3">
+														<p className="font-bold">{inc.title}</p>
+														<div className="grid grid-cols-2 gap-2 text-xs">
+															<label className="block text-slate-700 dark:text-slate-300">
+																Severity
+																<input
+																	type="number"
+																	min="1"
+																	max="5"
+																	value={editIncidentForm.severity_level}
+																	onChange={(e) =>
+																		setEditIncidentForm({
+																			...editIncidentForm,
+																			severity_level: Number(e.target.value),
+																		})
+																	}
+																	className="w-full mt-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+																/>
+															</label>
+															<label className="block text-slate-700 dark:text-slate-300">
+																Affected
+																<input
+																	type="number"
+																	min="0"
+																	value={editIncidentForm.affected_people}
+																	onChange={(e) =>
+																		setEditIncidentForm({
+																			...editIncidentForm,
+																			affected_people: Number(e.target.value),
+																		})
+																	}
+																	className="w-full mt-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+																/>
+															</label>
+															<label className="block text-slate-700 dark:text-slate-300">
+																Casualties
+																<input
+																	type="number"
+																	min="0"
+																	value={editIncidentForm.casualty_count}
+																	onChange={(e) =>
+																		setEditIncidentForm({
+																			...editIncidentForm,
+																			casualty_count: Number(e.target.value),
+																		})
+																	}
+																	className="w-full mt-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-colors"
+																/>
+															</label>
+															<label className="block text-slate-700 dark:text-slate-300">
+																Status
+																<select
+																	value={editIncidentForm.status}
+																	onChange={(e) =>
+																		setEditIncidentForm({
+																			...editIncidentForm,
+																			status: e.target.value,
+																		})
+																	}
+																	className="w-full mt-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors appearance-none"
+																>
+																	<option value="ACTIVE">ACTIVE</option>
+																	<option value="RESOLVED">RESOLVED</option>
+																</select>
+															</label>
+														</div>
+														<div className="flex gap-2">
+															<button
+																type="button"
+																onClick={() => saveIncidentUpdate(inc.id)}
+																className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-indigo-500/20"
+															>
+																Save
+															</button>
+															<button
+																type="button"
+																onClick={() => setEditingIncident(null)}
+																className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 px-4 py-2 rounded-lg text-xs font-bold transition-colors"
+															>
+																Cancel
+															</button>
+														</div>
 													</div>
-													<div className="flex gap-2">
-														<button onClick={() => saveIncidentUpdate(inc.id)} className="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold">Save</button>
-														<button onClick={() => setEditingIncident(null)} className="bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-1 rounded text-xs font-bold">Cancel</button>
+												) : (
+													<div className="flex justify-between items-start">
+														<div>
+															<p className="font-bold text-sm">{inc.title}</p>
+															<p className="text-xs font-semibold text-indigo-500 mt-1">
+																Center: {centerName}
+															</p>
+															<p className="text-xs text-slate-500 mt-1 space-x-2">
+																<span className="font-bold text-slate-700 dark:text-slate-300">
+																	{inc.status}
+																</span>
+																<span>L{inc.severity_level}</span>
+																<span>Affected: {inc.affected_people}</span>
+																<span className="text-rose-500">
+																	Casualties: {inc.casualty_count}
+																</span>
+															</p>
+														</div>
+														<button
+															type="button"
+															onClick={() => {
+																setEditingIncident(inc.id);
+																setEditIncidentForm({
+																	severity_level: inc.severity_level,
+																	affected_people: inc.affected_people,
+																	casualty_count: inc.casualty_count,
+																	status: inc.status,
+																});
+															}}
+															className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+														>
+															Edit
+														</button>
 													</div>
-												</div>
-											) : (
-												<div className="flex justify-between items-start">
-													<div>
-														<p className="font-bold text-sm">{inc.title}</p>
-														<p className="text-xs text-slate-500 mt-1 space-x-2">
-															<span className="font-bold text-slate-700 dark:text-slate-300">{inc.status}</span>
-															<span>L{inc.severity_level}</span>
-															<span>Affected: {inc.affected_people}</span>
-															<span className="text-rose-500">Casualties: {inc.casualty_count}</span>
-														</p>
-													</div>
-													<button onClick={() => { setEditingIncident(inc.id); setEditIncidentForm({ severity_level: inc.severity_level, affected_people: inc.affected_people, casualty_count: inc.casualty_count, status: inc.status }); }} className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">Edit</button>
-												</div>
-											)}
-										</div>
-									))}
+												)}
+											</div>
+										);
+									})}
 									{incidents.length === 0 && (
 										<p className="text-slate-500 text-sm text-center py-10">
 											No active incidents.
@@ -680,6 +578,30 @@ function AdminPanel() {
 									<div>
 										<label className="block">
 											<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+												Owner Center
+											</span>
+											<select
+												required
+												value={resourceForm.owner_center_id}
+												onChange={(e) =>
+													setResourceForm({
+														...resourceForm,
+														owner_center_id: e.target.value,
+													})
+												}
+												className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
+											>
+												{centers.map((c) => (
+													<option key={c.id} value={c.id}>
+														{c.name}
+													</option>
+												))}
+											</select>
+										</label>
+									</div>
+									<div className="grid grid-cols-2 gap-4">
+										<label className="block">
+											<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
 												Resource Type
 											</span>
 											<select
@@ -701,6 +623,24 @@ function AdminPanel() {
 												<option value="SHELTER_KIT">Shelter Kit</option>
 												<option value="MEDICAL_RATION">Medical Ration</option>
 											</select>
+										</label>
+										<label className="block">
+											<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+												Total Capacity
+											</span>
+											<input
+												type="number"
+												min="1"
+												required
+												value={resourceForm.total_capacity}
+												onChange={(e) =>
+													setResourceForm({
+														...resourceForm,
+														total_capacity: Number.parseInt(e.target.value, 10),
+													})
+												}
+												className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+											/>
 										</label>
 									</div>
 									<div className="grid grid-cols-2 gap-4">
@@ -759,422 +699,170 @@ function AdminPanel() {
 									Active Grid Assets
 								</h2>
 								<div className="grid gap-3 max-h-[500px] overflow-y-auto pr-2">
-									{resources.map((res) => (
-										<div
-											key={res.id}
-											className="flex items-center justify-between bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl"
-										>
-											<div className="flex items-center gap-4">
-												<div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
-													<Activity className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-												</div>
-												<div>
-													<p className="font-bold text-slate-900 dark:text-slate-100">
-														{res.unit_identifier}
-													</p>
-													<p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mt-0.5">
-														{res.resource_type.replace(/_/g, " ")}
-													</p>
-												</div>
-											</div>
-											<div className="text-right">
-												{editingResource === res.id ? (
-													<div className="flex flex-col items-end gap-2">
-														<select value={editResourceForm.status} onChange={(e) => setEditResourceForm({ status: e.target.value })} className="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1">
-															<option value="EN_ROUTE">EN ROUTE</option>
-															<option value="AT_SCENE">AT SCENE</option>
-															<option value="RETURNING">RETURNING</option>
-															<option value="AVAILABLE">AVAILABLE</option>
-															<option value="OFFLINE">OFFLINE</option>
-														</select>
-														<div className="flex gap-2">
-															<button onClick={() => saveResourceUpdate(res.id)} className="bg-indigo-600 text-white px-2 py-1 rounded text-xs font-bold">Save</button>
-															<button onClick={() => setEditingResource(null)} className="bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-1 rounded text-xs font-bold">Cancel</button>
-														</div>
+									{resources.map((res) => {
+										const centerName =
+											centers.find((c) => c.id === res.owner_center_id)?.name ||
+											"Unknown";
+										const assignedIncident = incidents.find(
+											(i) => i.id === res.assigned_incident_id,
+										);
+										return (
+											<div
+												key={res.id}
+												className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl gap-4"
+											>
+												<div className="flex items-center gap-4">
+													<div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
+														<Activity className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
 													</div>
-												) : (
-													<>
-														<span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-															{res.status.replace(/_/g, " ")}
-														</span>
-														<p className="text-xs text-slate-400 mt-2 flex items-center justify-end gap-2">
-															{res.latitude.toFixed(4)}, {res.longitude.toFixed(4)}
-															<button onClick={() => { setEditingResource(res.id); setEditResourceForm({ status: res.status }); }} className="text-indigo-600 dark:text-indigo-400 hover:underline">Edit</button>
+													<div>
+														<p className="font-bold text-slate-900 dark:text-slate-100">
+															{res.unit_identifier}
 														</p>
-													</>
-												)}
+														<p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mt-0.5">
+															{res.resource_type.replace(/_/g, " ")} | Cap:{" "}
+															{res.current_capacity}/{res.total_capacity}
+														</p>
+														<p className="text-xs text-slate-500 mt-1">
+															Center: {centerName}
+														</p>
+														{assignedIncident && (
+															<p className="text-xs text-rose-500 font-semibold mt-1">
+																Assigned: {assignedIncident.title}
+															</p>
+														)}
+													</div>
+												</div>
+												<div className="text-left sm:text-right w-full sm:w-auto">
+													{editingResource === res.id ? (
+														<div className="flex flex-col items-end gap-2 w-full">
+															<div className="flex gap-2 w-full justify-end">
+																<label className="text-xs flex items-center gap-2 text-slate-700 dark:text-slate-300">
+																	Status
+																	<select
+																		value={editResourceForm.status}
+																		onChange={(e) =>
+																			setEditResourceForm({
+																				...editResourceForm,
+																				status: e.target.value,
+																			})
+																		}
+																		className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors appearance-none"
+																	>
+																		<option value="EN_ROUTE">EN ROUTE</option>
+																		<option value="STUCK">STUCK</option>
+																		<option value="REJECTED">REJECTED</option>
+																		<option value="COMPLETED">COMPLETED</option>
+																	</select>
+																</label>
+																<label className="text-xs flex items-center gap-2 text-slate-700 dark:text-slate-300">
+																	Capacity
+																	<input
+																		type="number"
+																		min="0"
+																		value={editResourceForm.current_capacity}
+																		onChange={(e) =>
+																			setEditResourceForm({
+																				...editResourceForm,
+																				current_capacity: Number(
+																					e.target.value,
+																				),
+																			})
+																		}
+																		className="w-20 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+																	/>
+																</label>
+															</div>
+															<div className="flex gap-2">
+																<button
+																	type="button"
+																	onClick={() => saveResourceUpdate(res.id)}
+																	className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-indigo-500/20"
+																>
+																	Save
+																</button>
+																<button
+																	type="button"
+																	onClick={() => setEditingResource(null)}
+																	className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 px-4 py-1.5 rounded-lg text-xs font-bold transition-colors"
+																>
+																	Cancel
+																</button>
+															</div>
+														</div>
+													) : (
+														<>
+															<span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+																{res.status.replace(/_/g, " ")}
+															</span>
+															<p className="text-xs text-slate-400 mt-2 flex items-center justify-start sm:justify-end gap-2">
+																{res.latitude.toFixed(4)},{" "}
+																{res.longitude.toFixed(4)}
+																<button
+																	type="button"
+																	onClick={() => {
+																		setEditingResource(res.id);
+																		setEditResourceForm({
+																			status: res.status,
+																			current_capacity: res.current_capacity,
+																			latitude: res.latitude,
+																			longitude: res.longitude,
+																		});
+																	}}
+																	className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+																>
+																	Edit
+																</button>
+															</p>
+														</>
+													)}
+												</div>
 											</div>
-										</div>
-									))}
+										);
+									})}
+									{resources.length === 0 && (
+										<p className="text-slate-500 text-sm text-center py-10">
+											No resources provisioned.
+										</p>
+									)}
 								</div>
 							</div>
 						</div>
 					)}
 
-					{/* TEAMS TAB */}
-					{activeTab === "TEAMS" && (
-						<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-							<div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm dark:shadow-none">
+					{/* CENTERS TAB */}
+					{activeTab === "CENTERS" && (
+						<div className="grid grid-cols-1 gap-8">
+							<div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm dark:shadow-none min-h-[400px]">
 								<h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-									<Users className="w-5 h-5 text-emerald-500" />
-									Register Helper Team
+									<MapPin className="w-5 h-5 text-emerald-500" />
+									Divisional Centers
 								</h2>
-								<form onSubmit={handleSubmitTeam} className="space-y-4">
-									<div>
-										<label className="block">
-											<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-												Team Name
-											</span>
-											<input
-												type="text"
-												required
-												value={teamForm.team_name}
-												onChange={(e) =>
-													setTeamForm({
-														...teamForm,
-														team_name: e.target.value,
-													})
-												}
-												className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-												placeholder="e.g. Bravo Rescue Squad"
-											/>
-										</label>
-									</div>
-									<div>
-										<label className="block">
-											<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-												Total Members
-											</span>
-											<input
-												type="number"
-												min="1"
-												required
-												value={teamForm.total_members}
-												onChange={(e) =>
-													setTeamForm({
-														...teamForm,
-														total_members: Number.parseInt(e.target.value, 10),
-													})
-												}
-												className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-											/>
-										</label>
-									</div>
-									<div className="grid grid-cols-2 gap-4">
-										<div>
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Lat
-												</span>
-												<input
-													type="number"
-													step="any"
-													required
-													value={teamForm.latitude}
-													onChange={(e) =>
-														setTeamForm({
-															...teamForm,
-															latitude: Number.parseFloat(e.target.value),
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-												/>
-											</label>
-										</div>
-										<div>
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Lng
-												</span>
-												<input
-													type="number"
-													step="any"
-													required
-													value={teamForm.longitude}
-													onChange={(e) =>
-														setTeamForm({
-															...teamForm,
-															longitude: Number.parseFloat(e.target.value),
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-												/>
-											</label>
-										</div>
-									</div>
-									<button
-										type="submit"
-										className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-emerald-500/30"
-									>
-										Register Team
-									</button>
-								</form>
-							</div>
-							<div className="lg:col-span-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm dark:shadow-none min-h-[400px]">
-								<h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-									<Users className="w-5 h-5 text-emerald-500" />
-									Active Helper Teams
-								</h2>
-								<div className="grid gap-3 max-h-[500px] overflow-y-auto pr-2">
-									{helperTeams.map((team) => (
+								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+									{centers.map((center) => (
 										<div
-											key={team.id}
-											className="flex items-center justify-between bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl"
+											key={center.id}
+											className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 relative overflow-hidden group"
 										>
-											<div>
-												<p className="font-bold text-slate-900 dark:text-slate-100">
-													{team.team_name}
+											{center.is_core_center && (
+												<div className="absolute top-0 right-0 p-2">
+													<ShieldAlert className="w-5 h-5 text-amber-500" />
+												</div>
+											)}
+											<h3 className="font-bold text-lg mb-1">{center.name}</h3>
+											<p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-3">
+												{center.is_core_center
+													? "CORE HUB"
+													: "DIVISIONAL CENTER"}
+											</p>
+											<div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+												<p>
+													Location: {center.latitude.toFixed(4)},{" "}
+													{center.longitude.toFixed(4)}
 												</p>
-												<p className="text-xs text-slate-500 mt-1">
-													Status: {team.status}
-												</p>
-											</div>
-											<div className="text-right">
-												<span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-													{team.assigned_members} / {team.total_members}{" "}
-													DEPLOYED
-												</span>
 											</div>
 										</div>
 									))}
-								</div>
-							</div>
-						</div>
-					)}
-
-					{/* ALLOCATIONS TAB */}
-					{activeTab === "ALLOCATIONS" && (
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-							<div className="space-y-8">
-								<div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm dark:shadow-none">
-									<h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-										<Wrench className="w-5 h-5 text-amber-500" />
-										Log Assistance Request
-									</h2>
-									<form onSubmit={handleSubmitRequest} className="space-y-4">
-										<div>
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Resource (Vehicle)
-												</span>
-												<select
-													required
-													value={requestForm.resource_id}
-													onChange={(e) =>
-														setRequestForm({
-															...requestForm,
-															resource_id: e.target.value,
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 appearance-none"
-												>
-													<option value="">-- Select Resource --</option>
-													{resources.map((res) => (
-														<option key={res.id} value={res.id}>
-															{res.unit_identifier} (
-															{res.resource_type.replace(/_/g, " ")})
-														</option>
-													))}
-												</select>
-											</label>
-										</div>
-										<div>
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Issue Description
-												</span>
-												<textarea
-													required
-													rows={3}
-													value={requestForm.issue_description}
-													onChange={(e) =>
-														setRequestForm({
-															...requestForm,
-															issue_description: e.target.value,
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-													placeholder="e.g. Engine failure on route"
-												/>
-											</label>
-										</div>
-										<button
-											type="submit"
-											className="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-amber-500/30"
-										>
-											Log Request
-										</button>
-									</form>
-								</div>
-
-								<div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm dark:shadow-none">
-									<h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-										<Briefcase className="w-5 h-5 text-indigo-500" />
-										Deploy Helper Team
-									</h2>
-									<form onSubmit={handleSubmitAllocation} className="space-y-4">
-										<div>
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Team to Deploy
-												</span>
-												<select
-													required
-													value={allocationForm.helper_team_id}
-													onChange={(e) =>
-														setAllocationForm({
-															...allocationForm,
-															helper_team_id: e.target.value,
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
-												>
-													<option value="">-- Select Team --</option>
-													{helperTeams.map((team) => (
-														<option key={team.id} value={team.id}>
-															{team.team_name} (Avail:{" "}
-															{team.total_members - team.assigned_members})
-														</option>
-													))}
-												</select>
-											</label>
-										</div>
-										<div className="grid grid-cols-2 gap-4">
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Target Type
-												</span>
-												<select
-													value={allocationForm.target_type}
-													onChange={(e) =>
-														setAllocationForm({
-															...allocationForm,
-															target_type: e.target.value,
-															target_id: "", // reset
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
-												>
-													<option value="INCIDENT">Incident</option>
-													<option value="ASSISTANCE">Assistance Request</option>
-												</select>
-											</label>
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Members
-												</span>
-												<input
-													type="number"
-													min="1"
-													required
-													value={allocationForm.members_deployed}
-													onChange={(e) =>
-														setAllocationForm({
-															...allocationForm,
-															members_deployed: Number.parseInt(
-																e.target.value,
-																10,
-															),
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-												/>
-											</label>
-										</div>
-										<div>
-											<label className="block">
-												<span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-													Target Mission
-												</span>
-												<select
-													required
-													value={allocationForm.target_id}
-													onChange={(e) =>
-														setAllocationForm({
-															...allocationForm,
-															target_id: e.target.value,
-														})
-													}
-													className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
-												>
-													<option value="">-- Select Target --</option>
-													{allocationForm.target_type === "INCIDENT"
-														? incidents.map((inc) => (
-																<option key={inc.id} value={inc.id}>
-																	{inc.title}
-																</option>
-															))
-														: assistanceRequests.map((req) => (
-																<option key={req.id} value={req.id}>
-																	{req.issue_description}
-																</option>
-															))}
-												</select>
-											</label>
-										</div>
-										<button
-											type="submit"
-											className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-indigo-500/30"
-										>
-											Allocate Team
-										</button>
-									</form>
-								</div>
-							</div>
-
-							<div className="space-y-8">
-								<div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm dark:shadow-none min-h-[250px]">
-									<h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-										<Wrench className="w-5 h-5 text-amber-500" />
-										Active Support Requests
-									</h2>
-									<div className="grid gap-3">
-										{assistanceRequests.map((req) => (
-											<div
-												key={req.id}
-												className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
-											>
-												<p className="font-bold text-sm">
-													{req.issue_description}
-												</p>
-												<p className="text-xs text-slate-500 mt-1">
-													Status: {req.status}
-												</p>
-											</div>
-										))}
-										{assistanceRequests.length === 0 && (
-											<p className="text-slate-500 text-sm text-center py-10">
-												No active requests.
-											</p>
-										)}
-									</div>
-								</div>
-
-								<div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm dark:shadow-none min-h-[250px]">
-									<h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-										<Briefcase className="w-5 h-5 text-indigo-500" />
-										Deployed Allocations
-									</h2>
-									<div className="grid gap-3">
-										{allocations.map((alloc) => (
-											<div
-												key={alloc.id}
-												className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
-											>
-												<p className="font-bold text-sm">
-													Deployed: {alloc.members_deployed} Members
-												</p>
-												<p className="text-xs text-slate-500 mt-1">
-													Status: {alloc.status}
-												</p>
-											</div>
-										))}
-										{allocations.length === 0 && (
-											<p className="text-slate-500 text-sm text-center py-10">
-												No teams currently deployed.
-											</p>
-										)}
-									</div>
 								</div>
 							</div>
 						</div>

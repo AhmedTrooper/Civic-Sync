@@ -182,7 +182,10 @@ impl SemaphoreGate {
             let now = Instant::now();
             if now.duration_since(window.window_start) >= Self::WINDOW {
                 window.window_start = now;
-                window.permits_used = 0;
+                if window.permits_used > 0 {
+                    self.semaphore.add_permits(window.permits_used as usize);
+                    window.permits_used = 0;
+                }
             }
             if window.permits_used >= Self::PERMITS_PER_WINDOW {
                 // The semaphore had a permit available but the rolling window
@@ -210,7 +213,10 @@ impl SemaphoreGate {
     pub async fn reset_window(&self) {
         let mut window = self.window.lock().await;
         window.window_start = Instant::now();
-        window.permits_used = 0;
+        if window.permits_used > 0 {
+            self.semaphore.add_permits(window.permits_used as usize);
+            window.permits_used = 0;
+        }
     }
 
     /// Test-only helper that exposes the gate's permit-acquire logic so
@@ -612,7 +618,6 @@ mod tests {
                 arguments: dispatch::DispatchArguments {
                     incident_id: incident_a,
                     primary_center_id: Uuid::new_v4(),
-                    core_fallback_center_id: None,
                     allocations: Vec::new(),
                     resource_state_modifications: Vec::new(),
                     justification: "old-a".into(),
@@ -623,7 +628,6 @@ mod tests {
                 arguments: dispatch::DispatchArguments {
                     incident_id: incident_b,
                     primary_center_id: Uuid::new_v4(),
-                    core_fallback_center_id: None,
                     allocations: Vec::new(),
                     resource_state_modifications: Vec::new(),
                     justification: "old-b".into(),
@@ -654,7 +658,6 @@ mod tests {
             arguments: dispatch::DispatchArguments {
                 incident_id: incident,
                 primary_center_id: Uuid::new_v4(),
-                core_fallback_center_id: None,
                 allocations: Vec::new(),
                 resource_state_modifications: Vec::new(),
                 justification: "old".into(),
@@ -674,7 +677,6 @@ mod tests {
             arguments: dispatch::DispatchArguments {
                 incident_id: Uuid::new_v4(),
                 primary_center_id: Uuid::new_v4(),
-                core_fallback_center_id: None,
                 allocations: Vec::new(),
                 resource_state_modifications: Vec::new(),
                 justification: "old".into(),
@@ -701,7 +703,6 @@ mod tests {
             arguments: dispatch::DispatchArguments {
                 incident_id: incident,
                 primary_center_id: Uuid::new_v4(),
-                core_fallback_center_id: None,
                 allocations: Vec::new(),
                 resource_state_modifications: Vec::new(),
                 justification: "old".into(),

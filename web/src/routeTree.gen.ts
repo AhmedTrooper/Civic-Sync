@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResourcesResourceIdRouteImport } from './routes/resources.$resourceId'
+import { Route as IncidentsIncidentIdRouteImport } from './routes/incidents.$incidentId'
+import { Route as CentersCenterIdRouteImport } from './routes/centers.$centerId'
 
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
@@ -22,31 +25,74 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResourcesResourceIdRoute = ResourcesResourceIdRouteImport.update({
+  id: '/resources/$resourceId',
+  path: '/resources/$resourceId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IncidentsIncidentIdRoute = IncidentsIncidentIdRouteImport.update({
+  id: '/incidents/$incidentId',
+  path: '/incidents/$incidentId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CentersCenterIdRoute = CentersCenterIdRouteImport.update({
+  id: '/centers/$centerId',
+  path: '/centers/$centerId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/centers/$centerId': typeof CentersCenterIdRoute
+  '/incidents/$incidentId': typeof IncidentsIncidentIdRoute
+  '/resources/$resourceId': typeof ResourcesResourceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/centers/$centerId': typeof CentersCenterIdRoute
+  '/incidents/$incidentId': typeof IncidentsIncidentIdRoute
+  '/resources/$resourceId': typeof ResourcesResourceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/centers/$centerId': typeof CentersCenterIdRoute
+  '/incidents/$incidentId': typeof IncidentsIncidentIdRoute
+  '/resources/$resourceId': typeof ResourcesResourceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/centers/$centerId'
+    | '/incidents/$incidentId'
+    | '/resources/$resourceId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin'
-  id: '__root__' | '/' | '/admin'
+  to:
+    | '/'
+    | '/admin'
+    | '/centers/$centerId'
+    | '/incidents/$incidentId'
+    | '/resources/$resourceId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/centers/$centerId'
+    | '/incidents/$incidentId'
+    | '/resources/$resourceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  CentersCenterIdRoute: typeof CentersCenterIdRoute
+  IncidentsIncidentIdRoute: typeof IncidentsIncidentIdRoute
+  ResourcesResourceIdRoute: typeof ResourcesResourceIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +111,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/resources/$resourceId': {
+      id: '/resources/$resourceId'
+      path: '/resources/$resourceId'
+      fullPath: '/resources/$resourceId'
+      preLoaderRoute: typeof ResourcesResourceIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/incidents/$incidentId': {
+      id: '/incidents/$incidentId'
+      path: '/incidents/$incidentId'
+      fullPath: '/incidents/$incidentId'
+      preLoaderRoute: typeof IncidentsIncidentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/centers/$centerId': {
+      id: '/centers/$centerId'
+      path: '/centers/$centerId'
+      fullPath: '/centers/$centerId'
+      preLoaderRoute: typeof CentersCenterIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  CentersCenterIdRoute: CentersCenterIdRoute,
+  IncidentsIncidentIdRoute: IncidentsIncidentIdRoute,
+  ResourcesResourceIdRoute: ResourcesResourceIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

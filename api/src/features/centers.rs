@@ -27,7 +27,7 @@ const DHAKA_HUBS: &[(&str, bool, f64, f64)] = &[
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CommandCenter {
+pub struct Center {
     pub id: Uuid,
     pub name: String,
     pub is_core_center: bool,
@@ -42,7 +42,7 @@ pub struct CommandCenter {
 /// Filtering on real data fields preserves data identity instead of
 /// introducing path-based sub-routes.
 #[derive(Debug, Default, Deserialize)]
-pub struct ListCommandCentersQuery {
+pub struct ListCentersQuery {
     pub name: Option<String>,
     pub is_core_center: Option<bool>,
     pub limit: Option<i64>,
@@ -51,12 +51,12 @@ pub struct ListCommandCentersQuery {
 
 pub async fn list(
     State(state): State<AppState>,
-    Query(query): Query<ListCommandCentersQuery>,
-) -> Result<Json<Vec<CommandCenter>>, ApiError> {
+    Query(query): Query<ListCentersQuery>,
+) -> Result<Json<Vec<Center>>, ApiError> {
     let items = match &state.database {
         Some(pool) => list_postgres(pool, &query).await?,
         None => state
-            .command_centers
+            .centers
             .read()
             .await
             .values()
@@ -72,11 +72,11 @@ pub async fn list(
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-) -> Result<Json<CommandCenter>, ApiError> {
+) -> Result<Json<Center>, ApiError> {
     let center = match &state.database {
         Some(pool) => fetch_postgres(pool, id).await?,
         None => state
-            .command_centers
+            .centers
             .read()
             .await
             .get(&id)
@@ -93,10 +93,8 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let seeded_ids: std::collections::HashSet<Uuid> = seed_command_centers()
-        .into_iter()
-        .map(|center| center.id)
-        .collect();
+    let seeded_ids: std::collections::HashSet<Uuid> =
+        seed_centers().into_iter().map(|center| center.id).collect();
     if seeded_ids.contains(&id) {
         return Err(ApiError::Conflict(
             "seeded command center cannot be removed".into(),
@@ -106,19 +104,19 @@ pub async fn delete(
         Some(pool) => delete_postgres(pool, id).await?,
         None => {
             state
-                .command_centers
+                .centers
                 .write()
                 .await
                 .remove(&id)
                 .ok_or(ApiError::NotFound)?;
         }
     }
-    state.enqueue_flush(FlushMark::new(FlushKind::CommandCenter, id, 0));
+    state.enqueue_flush(FlushMark::new(FlushKind::Center, id, 0));
     Ok(StatusCode::NO_CONTENT)
 }
 
 async fn delete_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<(), ApiError> {
-    let result = sqlx::query("DELETE FROM command_centers WHERE id = $1")
+    let result = sqlx::query("DELETE FROM centers WHERE id = $1")
         .bind(id)
         .execute(pool)
         .await?;
@@ -128,8 +126,8 @@ async fn delete_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<(), ApiError> 
     Ok(())
 }
 
-impl ListCommandCentersQuery {
-    fn matches(&self, center: &CommandCenter) -> bool {
+impl ListCentersQuery {
+    fn matches(&self, center: &Center) -> bool {
         if let Some(name) = &self.name
             && !center.name.eq_ignore_ascii_case(name)
         {
@@ -156,15 +154,15 @@ impl ListCommandCentersQuery {
 
 pub(crate) async fn list_postgres(
     pool: &sqlx::PgPool,
-    query: &ListCommandCentersQuery,
-) -> Result<Vec<CommandCenter>, ApiError> {
+    query: &ListCentersQuery,
+) -> Result<Vec<Center>, ApiError> {
     query.validate()?;
     let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new(
         r#"SELECT id, name, is_core_center,
-                  ST_Y(location::geometry) AS latitude,
-                  ST_X(location::geometry) AS longitude,
+                  latitude,
+                  longitude,
                   created_at, updated_at, server_synced_at
-           FROM command_centers"#,
+           FROM centers"#,
     );
     builder.push(" WHERE 1 = 1");
     if let Some(name) = &query.name {
@@ -185,52 +183,49 @@ pub(crate) async fn list_postgres(
         builder.push_bind(offset);
     }
     let rows = builder
-        .build_query_as::<CommandCenterRow>()
+        .build_query_as::<CenterRow>()
         .fetch_all(pool)
         .await?;
-    Ok(rows.into_iter().map(CommandCenter::from).collect())
+    Ok(rows.into_iter().map(Center::from).collect())
 }
 
 #[allow(dead_code)] // consumed by the dispatch engine in src/features/dispatch.rs
-pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<CommandCenter>, ApiError> {
-    let rows = sqlx::query_as::<_, CommandCenterRow>(
+pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<Center>, ApiError> {
+    let rows = sqlx::query_as::<_, CenterRow>(
         r#"SELECT id, name, is_core_center,
-                  ST_Y(location::geometry) AS latitude,
-                  ST_X(location::geometry) AS longitude,
+                  latitude,
+                  longitude,
                   created_at, updated_at, server_synced_at
-           FROM command_centers
+           FROM centers
            ORDER BY is_core_center DESC, name ASC"#,
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(CommandCenter::from).collect())
+    Ok(rows.into_iter().map(Center::from).collect())
 }
 
-pub(crate) async fn fetch_postgres(
-    pool: &sqlx::PgPool,
-    id: Uuid,
-) -> Result<CommandCenter, ApiError> {
-    let row = sqlx::query_as::<_, CommandCenterRow>(
+pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Center, ApiError> {
+    let row = sqlx::query_as::<_, CenterRow>(
         r#"SELECT id, name, is_core_center,
-                  ST_Y(location::geometry) AS latitude,
-                  ST_X(location::geometry) AS longitude,
+                  latitude,
+                  longitude,
                   created_at, updated_at, server_synced_at
-           FROM command_centers WHERE id = $1"#,
+           FROM centers WHERE id = $1"#,
     )
     .bind(id)
     .fetch_optional(pool)
     .await?
     .ok_or(ApiError::NotFound)?;
-    Ok(CommandCenter::from(row))
+    Ok(Center::from(row))
 }
 
 /// Seed the in-memory replica with the 8 divisional hubs so the feature works
 /// without a database (mirrors the DB seed in `0002_command_centers.sql`).
-pub(crate) fn seed_command_centers() -> Vec<CommandCenter> {
+pub(crate) fn seed_centers() -> Vec<Center> {
     let now = Utc::now();
     DHAKA_HUBS
         .iter()
-        .map(|(name, is_core, latitude, longitude)| CommandCenter {
+        .map(|(name, is_core, latitude, longitude)| Center {
             id: deterministic_id(name),
             name: (*name).to_string(),
             is_core_center: *is_core,
@@ -248,7 +243,7 @@ fn deterministic_id(name: &str) -> Uuid {
 }
 
 #[derive(sqlx::FromRow)]
-pub struct CommandCenterRow {
+pub struct CenterRow {
     pub id: Uuid,
     pub name: String,
     pub is_core_center: bool,
@@ -259,9 +254,9 @@ pub struct CommandCenterRow {
     pub server_synced_at: Option<DateTime<Utc>>,
 }
 
-impl From<CommandCenterRow> for CommandCenter {
-    fn from(row: CommandCenterRow) -> Self {
-        CommandCenter {
+impl From<CenterRow> for Center {
+    fn from(row: CenterRow) -> Self {
+        Center {
             id: row.id,
             name: row.name,
             is_core_center: row.is_core_center,

@@ -30,7 +30,6 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, watch};
 
-use crate::features::resources::ResourceType;
 use crate::state::AppState;
 
 /// Tick interval for the background disaster generator when active.
@@ -162,6 +161,16 @@ async fn synthesise_incident(
 ) -> Result<uuid::Uuid, crate::error::ApiError> {
     use crate::features::{flush::FlushKind, incidents::CreateIncident};
 
+    fn haversine_distance(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+        let r = 6371.0;
+        let d_lat = (lat2 - lat1).to_radians();
+        let d_lon = (lon2 - lon1).to_radians();
+        let a = (d_lat / 2.0).sin().powi(2)
+            + lat1.to_radians().cos() * lat2.to_radians().cos() * (d_lon / 2.0).sin().powi(2);
+        let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+        r * c
+    }
+
     // 1% probability of a severity-5 mass-casualty event so the simulator
     // exercises the §5B severity-5 trigger on a regular cadence.
     let severity_level = if rand::random_bool(0.01) {
@@ -176,8 +185,6 @@ async fn synthesise_incident(
     };
     let affected_people = casualty_count * rand::random_range(5..=15);
     let (latitude, longitude) = random_bangladesh_coordinate();
-    let required_resource_types = pick_required_resources();
-
     let payload = CreateIncident {
         title: format!("Simulated event @ ({:.4}, {:.4})", latitude, longitude),
         severity_level,
@@ -185,21 +192,37 @@ async fn synthesise_incident(
         casualty_count,
         latitude,
         longitude,
-        required_resource_types,
     };
 
     let now = Utc::now();
     let id = uuid::Uuid::new_v4();
+    let centers = state.centers.read().await;
+    let mut closest_center_id = uuid::Uuid::nil();
+    let mut min_dist = f64::MAX;
+    for center in centers.values() {
+        let dist = haversine_distance(
+            payload.latitude,
+            payload.longitude,
+            center.latitude,
+            center.longitude,
+        );
+        if dist < min_dist {
+            min_dist = dist;
+            closest_center_id = center.id;
+        }
+    }
+    drop(centers);
+
     let incident = crate::features::incidents::Incident {
         id,
         title: payload.title.clone(),
+        primary_center_id: closest_center_id,
         severity_level: payload.severity_level,
         affected_people: payload.affected_people,
         casualty_count: payload.casualty_count,
         latitude: payload.latitude,
         longitude: payload.longitude,
         status: crate::features::incidents::IncidentStatus::Active,
-        required_resource_types: payload.required_resource_types.clone(),
         created_at: now,
         updated_at: now,
         server_synced_at: None,
@@ -219,24 +242,6 @@ async fn synthesise_incident(
     let _ = simulation;
     crate::features::incidents::fire_creation_triggers_for(state, &incident);
     Ok(id)
-}
-
-/// Pick 1-3 resource types the synthetic incident needs. Skewed toward
-/// ambulances and boats because Bangladesh disasters are typically
-/// flood-driven (per data.md §3).
-fn pick_required_resources() -> Vec<ResourceType> {
-    let pool = [
-        ResourceType::Ambulance,
-        ResourceType::Boat,
-        ResourceType::ReliefTruck,
-        ResourceType::FoodPack,
-        ResourceType::WaterSupply,
-        ResourceType::ShelterKit,
-    ];
-    let count = rand::random_range(1..=3);
-    (0..count)
-        .map(|_| pool[rand::random_range(0..pool.len())])
-        .collect()
 }
 
 /// Random coordinate inside a loose bounding box that covers the eight
@@ -259,8 +264,6 @@ pub struct InjectIncidentRequest {
     pub casualty_count: u32,
     pub latitude: f64,
     pub longitude: f64,
-    #[serde(default)]
-    pub required_resource_types: Vec<crate::features::resources::ResourceType>,
 }
 
 impl InjectIncidentRequest {
@@ -302,16 +305,43 @@ pub async fn inject_incident(
 
     payload.validate()?;
     let now = Utc::now();
+    fn haversine_distance(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+        let r = 6371.0;
+        let d_lat = (lat2 - lat1).to_radians();
+        let d_lon = (lon2 - lon1).to_radians();
+        let a = (d_lat / 2.0).sin().powi(2)
+            + lat1.to_radians().cos() * lat2.to_radians().cos() * (d_lon / 2.0).sin().powi(2);
+        let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+        r * c
+    }
+
+    let centers = state.centers.read().await;
+    let mut closest_center_id = uuid::Uuid::nil();
+    let mut min_dist = f64::MAX;
+    for center in centers.values() {
+        let dist = haversine_distance(
+            payload.latitude,
+            payload.longitude,
+            center.latitude,
+            center.longitude,
+        );
+        if dist < min_dist {
+            min_dist = dist;
+            closest_center_id = center.id;
+        }
+    }
+    drop(centers);
+
     let incident = Incident {
         id: uuid::Uuid::new_v4(),
         title: payload.title.trim().to_string(),
+        primary_center_id: closest_center_id,
         severity_level: payload.severity_level,
         affected_people: payload.affected_people,
         casualty_count: payload.casualty_count,
         latitude: payload.latitude,
         longitude: payload.longitude,
         status: IncidentStatus::Active,
-        required_resource_types: payload.required_resource_types,
         created_at: now,
         updated_at: now,
         server_synced_at: None,
