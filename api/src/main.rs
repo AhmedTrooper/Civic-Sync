@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Context;
 use civic_sync_api::{app, config::Config};
 use sqlx::postgres::PgPoolOptions;
@@ -5,7 +7,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = Config::from_env()?;
+    let _ = dotenvy::dotenv();
+    let config = Arc::new(Config::from_env()?);
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
@@ -13,6 +16,8 @@ async fn main() -> anyhow::Result<()> {
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
+
+    log_config_summary(&config);
 
     let database = if let Some(url) = &config.database_url {
         let pool = PgPoolOptions::new()
@@ -38,6 +43,17 @@ async fn main() -> anyhow::Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())
+}
+
+fn log_config_summary(config: &Config) {
+    tracing::info!(
+        database = config.database_url.is_some(),
+        redis = config.redis_url.is_some(),
+        s3_bucket = config.s3.bucket.as_deref().unwrap_or("(unset)"),
+        ai_provider = config.ai.provider.as_deref().unwrap_or("(unset)"),
+        allowed_origins = config.allowed_origins.len(),
+        "config loaded"
+    );
 }
 
 async fn shutdown_signal() {
