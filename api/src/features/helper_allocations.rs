@@ -193,6 +193,71 @@ async fn create_in_memory(
     Ok((StatusCode::CREATED, Json(allocation)))
 }
 
+/// Insert a helper_allocations row inside an existing transaction. Used by
+/// both the POST endpoint and the dispatch engine so the entire batch shares
+/// one tx (data.md §2 — conflict prevention).
+#[allow(dead_code)] // consumed by src/features/dispatch.rs
+pub(crate) async fn insert_postgres_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    input: &CreateHelperAllocation,
+    status: AllocationStatus,
+    now: DateTime<Utc>,
+) -> Result<HelperAllocation, ApiError> {
+    let id = Uuid::new_v4();
+    sqlx::query(
+        r#"INSERT INTO helper_allocations (
+            id, helper_team_id, incident_id, assistance_request_id,
+            members_deployed, status, created_at, updated_at, server_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+    )
+    .bind(id)
+    .bind(input.helper_team_id)
+    .bind(input.incident_id)
+    .bind(input.assistance_request_id)
+    .bind(input.members_deployed as i32)
+    .bind(serde_json::to_value(status).map_err(|err| ApiError::Internal(err.to_string()))?)
+    .bind(now)
+    .bind(now)
+    .bind(Option::<DateTime<Utc>>::None)
+    .execute(&mut **tx)
+    .await?;
+    Ok(HelperAllocation {
+        id,
+        helper_team_id: input.helper_team_id,
+        incident_id: input.incident_id,
+        assistance_request_id: input.assistance_request_id,
+        members_deployed: input.members_deployed,
+        status,
+        created_at: now,
+        updated_at: now,
+        server_synced_at: None,
+    })
+}
+
+/// Bump a helper team's assigned_members counter inside an existing transaction.
+/// Runs the spec CHECK constraint (assigned_members <= total_members) via the
+/// database itself; the engine must pre-screen against
+/// `HelperTeam::available_capacity()` to avoid hitting that violation.
+#[allow(dead_code)] // consumed by src/features/dispatch.rs
+pub(crate) async fn bump_assigned_postgres_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    team_id: Uuid,
+    delta: u32,
+    now: DateTime<Utc>,
+) -> Result<(), ApiError> {
+    sqlx::query(
+        r#"UPDATE helper_teams
+           SET assigned_members = assigned_members + $1, updated_at = $2
+           WHERE id = $3"#,
+    )
+    .bind(delta as i32)
+    .bind(now)
+    .bind(team_id)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
 async fn create_postgres(
     pool: &sqlx::PgPool,
     input: &CreateHelperAllocation,
@@ -215,42 +280,12 @@ async fn create_postgres(
     }
 
     let now = Utc::now();
-    let id = Uuid::new_v4();
-    sqlx::query(
-        r#"INSERT INTO helper_allocations (
-            id, helper_team_id, incident_id, assistance_request_id,
-            members_deployed, status, created_at, updated_at, server_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
-    )
-    .bind(id)
-    .bind(input.helper_team_id)
-    .bind(input.incident_id)
-    .bind(input.assistance_request_id)
-    .bind(input.members_deployed as i32)
-    .bind(
-        serde_json::to_value(AllocationStatus::EnRoute)
-            .map_err(|err| ApiError::Internal(err.to_string()))?,
-    )
-    .bind(now)
-    .bind(now)
-    .bind(Option::<DateTime<Utc>>::None)
-    .execute(&mut *tx)
-    .await?;
-
-    sqlx::query(
-        r#"UPDATE helper_teams
-           SET assigned_members = assigned_members + $1, updated_at = $2
-           WHERE id = $3"#,
-    )
-    .bind(input.members_deployed as i32)
-    .bind(now)
-    .bind(input.helper_team_id)
-    .execute(&mut *tx)
-    .await?;
+    let allocation = insert_postgres_tx(&mut tx, input, AllocationStatus::EnRoute, now).await?;
+    bump_assigned_postgres_tx(&mut tx, input.helper_team_id, input.members_deployed, now).await?;
     tx.commit().await?;
 
-    let allocation = fetch_postgres(pool, id).await?;
-    Ok((StatusCode::CREATED, Json(allocation)))
+    let stored = fetch_postgres(pool, allocation.id).await?;
+    Ok((StatusCode::CREATED, Json(stored)))
 }
 
 pub(crate) async fn list_postgres(

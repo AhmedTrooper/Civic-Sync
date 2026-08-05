@@ -387,6 +387,38 @@ pub struct ResourceRow {
     pub server_synced_at: Option<DateTime<Utc>>,
 }
 
+/// Shared transactional link used by the dispatch engine.
+///
+/// Locks the resource row, flips the status, attaches it to an incident,
+/// and stamps the remaining travel distance. data.md section 6.4 imposes
+/// no transition rules, so any status is accepted here.
+#[allow(dead_code)] // consumed by src/features/dispatch.rs
+pub(crate) async fn dispatch_link_postgres(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: Uuid,
+    incident_id: Uuid,
+    new_status: ResourceStatus,
+    distance_remaining_km: f64,
+    now: DateTime<Utc>,
+) -> Result<(), ApiError> {
+    sqlx::query(
+        r#"UPDATE resources
+           SET status = $1,
+               incident_id = $2,
+               distance_remaining_km = $3,
+               updated_at = $4
+           WHERE id = $5"#,
+    )
+    .bind(serde_json::to_value(new_status).map_err(|err| ApiError::Internal(err.to_string()))?)
+    .bind(incident_id)
+    .bind(distance_remaining_km)
+    .bind(now)
+    .bind(id)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
 impl From<ResourceRow> for Resource {
     fn from(row: ResourceRow) -> Self {
         Resource {
