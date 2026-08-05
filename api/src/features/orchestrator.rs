@@ -209,6 +209,15 @@ impl SemaphoreGate {
         window.window_start = Instant::now();
         window.permits_used = 0;
     }
+
+    /// Test-only helper that exposes the gate's permit-acquire logic so
+    /// integration tests in tests/api.rs can drive the gate into an
+    /// exhausted state and assert the heuristic-fallback path. Not
+    /// intended for production callers.
+    #[doc(hidden)]
+    pub async fn try_acquire_for_test(&self) -> bool {
+        self.try_acquire().await
+    }
 }
 
 impl Default for SemaphoreGate {

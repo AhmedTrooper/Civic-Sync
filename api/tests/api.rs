@@ -661,3 +661,175 @@ async fn cors_is_wildcard_when_allowed_origins_empty() {
         .expect("allow-origin present when empty allow list");
     assert_eq!(allow_origin, HeaderValue::from_static("*"));
 }
+
+/// Build a Config with the AI block fully populated. Used by the
+/// "orchestrator configured" path tests below. The API key is a dummy
+/// since the tests verify the *heuristic fallback* path — the LLM is
+/// never actually called.
+fn config_with_ai_provider(provider: &str, model: &str) -> Arc<Config> {
+    let mut config = (*Config::default_for_tests()).clone();
+    config.ai.provider = Some(provider.into());
+    config.ai.model = Some(model.into());
+    config.ai.api_key = Some("sk-test".into());
+    Arc::new(config)
+}
+
+#[tokio::test]
+async fn dispatch_uses_heuristic_when_orchestrator_configured_but_key_is_dummy() {
+    // Synthesize a state with the AI block fully populated. The tests are
+    // not allowed to make a real network call, so the orchestrator must
+    // transparently fall back to the heuristic when the LLM is unreachable.
+    let config = config_with_ai_provider("openai", "gpt-4o-mini");
+    let state = AppState::with_config(None, config);
+    {
+        let mut resources = state.resources.write().await;
+        resources.insert(sample_resource().id, sample_resource());
+    }
+    let mut incidents = state.incidents.write().await;
+    let incident_id = uuid::Uuid::new_v4();
+    incidents.insert(
+        incident_id,
+        Incident {
+            id: incident_id,
+            ..sample_incident()
+        },
+    );
+    drop(incidents);
+
+    let app = app::router_with_state(state);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/dispatch/recommendations")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse recommendations");
+    let envelopes: Vec<ToolCallEnvelope> =
+        serde_json::from_value(body["recommendations"].clone()).expect("parse envelopes");
+    assert_eq!(envelopes.len(), 1);
+    let envelope = &envelopes[0];
+    assert_eq!(envelope.tool_name, "dispatch_multi_center_response");
+    assert_eq!(envelope.arguments.incident_id, incident_id);
+    assert!(envelope.arguments.primary_center_id != uuid::Uuid::nil());
+    // The heuristic justification is deterministic; the LLM (which would
+    // refine the text) is never actually called in this test.
+    assert!(
+        envelope.arguments.justification.contains("Hub"),
+        "heuristic-fallback justification should mention the hub: got {:?}",
+        envelope.arguments.justification
+    );
+}
+
+#[tokio::test]
+async fn dispatch_uses_heuristic_when_no_ai_configured() {
+    // Default Config has no AI block — the orchestrator is None and the
+    // dispatch handler must run the heuristic directly. This is the
+    // "production" path when the operator hasn't wired up an LLM.
+    let state = AppState::new(None);
+    {
+        let mut resources = state.resources.write().await;
+        resources.insert(sample_resource().id, sample_resource());
+    }
+    let mut incidents = state.incidents.write().await;
+    let incident_id = uuid::Uuid::new_v4();
+    incidents.insert(
+        incident_id,
+        Incident {
+            id: incident_id,
+            ..sample_incident()
+        },
+    );
+    drop(incidents);
+
+    let app = app::router_with_state(state);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/dispatch/recommendations")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse recommendations");
+    let envelopes: Vec<ToolCallEnvelope> =
+        serde_json::from_value(body["recommendations"].clone()).expect("parse envelopes");
+    assert_eq!(envelopes.len(), 1);
+    assert_eq!(envelopes[0].arguments.incident_id, incident_id);
+}
+
+#[tokio::test]
+async fn dispatch_semaphore_exhaustion_does_not_block_subsequent_calls() {
+    // Even when the orchestrator's gate is fully consumed, the dispatch
+    // endpoint must always return a successful response. The orchestrator
+    // returns the heuristic envelopes when the gate is exhausted; the HTTP
+    // response is still 200 OK with the spec-shaped envelope.
+    let config = config_with_ai_provider("openai", "gpt-4o-mini");
+    let state = AppState::with_config(None, config);
+    let mut incidents = state.incidents.write().await;
+    let incident_id = uuid::Uuid::new_v4();
+    incidents.insert(
+        incident_id,
+        Incident {
+            id: incident_id,
+            ..sample_incident()
+        },
+    );
+    drop(incidents);
+
+    // Pre-consume all 3 permits on the orchestrator's gate so the next
+    // dispatch call is forced through the heuristic fallback.
+    if let Some(orchestrator) = state.orchestrator.as_ref() {
+        for _ in 0..3 {
+            assert!(orchestrator.gate.try_acquire_for_test().await);
+        }
+        assert!(!orchestrator.gate.try_acquire_for_test().await);
+    }
+
+    let app = app::router_with_state(state);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/dispatch/recommendations")
+                .body(Body::empty())
+                .expect("build request"),
+        )
+        .await
+        .expect("run request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &axum::body::to_bytes(response.into_body(), 1_000_000)
+            .await
+            .expect("read body"),
+    )
+    .expect("parse recommendations");
+    let envelopes: Vec<ToolCallEnvelope> =
+        serde_json::from_value(body["recommendations"].clone()).expect("parse envelopes");
+    assert_eq!(envelopes.len(), 1);
+    assert_eq!(envelopes[0].arguments.incident_id, incident_id);
+    // The justification text is the deterministic heuristic text, not an
+    // LLM-refined variant — the gate forced the fallback path.
+    assert!(
+        envelopes[0].arguments.justification.contains("Hub"),
+        "exhausted-gate dispatch should fall back to heuristic justification: got {:?}",
+        envelopes[0].arguments.justification
+    );
+}
