@@ -1,5 +1,8 @@
+pub mod assistance_requests;
 pub mod command_centers;
 pub mod dispatch;
 pub mod health;
+pub mod helper_allocations;
+pub mod helper_teams;
 pub mod incidents;
 pub mod resources;
