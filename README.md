@@ -9,6 +9,18 @@ When floods, cyclones, and urban disasters hit Bangladesh's eight divisions **si
 
 ---
 
+## Screenshots
+
+![Home Dashboard](assets/dashboards/home.png)
+
+| Admin Crisis | List Divisions |
+|--------------|----------------|
+| ![admin_crisis](assets/dashboards/admin_crisis.png) | ![list_divisions](assets/dashboards/list_divisions.png) |
+| ![admin_assets](assets/dashboards/admin_assets_creation_list_etc.png) | ![center details](assets/dashboards/center%20details.png) |
+| ![resources_details](assets/dashboards/resources_details.png) | ![incident_details](assets/dashboards/incident_details.png) |
+
+---
+
 ## Why it matters
 
 Real emergencies generate the worst possible operating conditions: spotty mobile networks, partial outages, flooded comms rooms, and dispatchers working twelve-hour shifts with information overload. CivicSync is built for that reality, not for a clean cloud demo:
