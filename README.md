@@ -9,6 +9,15 @@ When floods, cyclones, and urban disasters hit Bangladesh's eight divisions **si
 
 ---
 
+## 📄 Project Report
+
+**Read the architecture deep-dive → [Problem Statement (PDF)](assets/PSTU-HACK-2026-0102_Problem_Statement.pdf)** — the submission document for the PSTU Hackathon (Registration ID `PSTU-HACK-2026-0102`, track: *Backend Architecture & Decision-Making Engine*).
+It covers the full system architecture, priority-scoring engine, multi-center dispatch model, AI orchestration with degradation semantics, and observability — with a full-page TikZ diagram and live verification results from the four-layer gate.
+
+Source LaTeX: [`assets/PSTU-HACK-2026-0102_Problem_Statement.tex`](assets/PSTU-HACK-2026-0102_Problem_Statement.tex)
+
+---
+
 ## Screenshots
 
 ![Home Dashboard](assets/dashboards/home.png)
