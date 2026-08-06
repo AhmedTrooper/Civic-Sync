@@ -1,6 +1,8 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { useEffect, useState } from "react";
+import { Toaster } from "sonner";
 import Header from "../components/Header";
 
 import appCss from "../styles.css?url";
@@ -31,6 +33,20 @@ export const Route = createRootRoute({
 	shellComponent: RootDocument,
 });
 
+/**
+ * Sonner's <Toaster> uses hooks that crash during SSR; mount it on the
+ * client only. The component renders nothing during SSR so the
+ * streamed HTML stays clean and toasts appear on hydration.
+ */
+function ClientToaster() {
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+	if (!mounted) return null;
+	return <Toaster richColors position="top-right" closeButton />;
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
@@ -41,6 +57,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
 				<Header />
 				{children}
+				<ClientToaster />
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

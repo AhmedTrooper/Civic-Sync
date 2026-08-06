@@ -6,6 +6,7 @@ import {
 	Circle,
 	Polyline,
 } from "react-leaflet";
+import React from "react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -119,9 +120,8 @@ export default function CenterMap({
 
 			{/* Resource markers + connection lines to center */}
 			{resources.map((res) => (
-				<>
+				<React.Fragment key={res.id}>
 					<Marker
-						key={res.id}
 						position={[res.latitude, res.longitude]}
 						icon={resourceIcon}
 					>
@@ -154,14 +154,13 @@ export default function CenterMap({
 							opacity: 0.5,
 						}}
 					/>
-				</>
+				</React.Fragment>
 			))}
 
 			{/* Incident markers + connection lines to center */}
 			{incidents.map((inc) => (
-				<>
+				<React.Fragment key={inc.id}>
 					<Marker
-						key={inc.id}
 						position={[inc.latitude, inc.longitude]}
 						icon={incidentIcon}
 					>
@@ -203,7 +202,7 @@ export default function CenterMap({
 							opacity: 0.6,
 						}}
 					/>
-				</>
+				</React.Fragment>
 			))}
 		</MapContainer>
 	);

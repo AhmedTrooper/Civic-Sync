@@ -11,9 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ResourcesResourceIdRouteImport } from './routes/resources.$resourceId'
 import { Route as IncidentsIncidentIdRouteImport } from './routes/incidents.$incidentId'
 import { Route as CentersCenterIdRouteImport } from './routes/centers.$centerId'
+import { Route as AdminSimulationRouteImport } from './routes/admin.simulation'
+import { Route as AdminCentersRouteImport } from './routes/admin.centers'
+import { Route as AdminAssetsRouteImport } from './routes/admin.assets'
 
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
@@ -24,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ResourcesResourceIdRoute = ResourcesResourceIdRouteImport.update({
   id: '/resources/$resourceId',
@@ -40,56 +49,93 @@ const CentersCenterIdRoute = CentersCenterIdRouteImport.update({
   path: '/centers/$centerId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSimulationRoute = AdminSimulationRouteImport.update({
+  id: '/simulation',
+  path: '/simulation',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCentersRoute = AdminCentersRouteImport.update({
+  id: '/centers',
+  path: '/centers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAssetsRoute = AdminAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/admin/assets': typeof AdminAssetsRoute
+  '/admin/centers': typeof AdminCentersRoute
+  '/admin/simulation': typeof AdminSimulationRoute
   '/centers/$centerId': typeof CentersCenterIdRoute
   '/incidents/$incidentId': typeof IncidentsIncidentIdRoute
   '/resources/$resourceId': typeof ResourcesResourceIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin/assets': typeof AdminAssetsRoute
+  '/admin/centers': typeof AdminCentersRoute
+  '/admin/simulation': typeof AdminSimulationRoute
   '/centers/$centerId': typeof CentersCenterIdRoute
   '/incidents/$incidentId': typeof IncidentsIncidentIdRoute
   '/resources/$resourceId': typeof ResourcesResourceIdRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/admin/assets': typeof AdminAssetsRoute
+  '/admin/centers': typeof AdminCentersRoute
+  '/admin/simulation': typeof AdminSimulationRoute
   '/centers/$centerId': typeof CentersCenterIdRoute
   '/incidents/$incidentId': typeof IncidentsIncidentIdRoute
   '/resources/$resourceId': typeof ResourcesResourceIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
+    | '/admin/assets'
+    | '/admin/centers'
+    | '/admin/simulation'
     | '/centers/$centerId'
     | '/incidents/$incidentId'
     | '/resources/$resourceId'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
+    | '/admin/assets'
+    | '/admin/centers'
+    | '/admin/simulation'
     | '/centers/$centerId'
     | '/incidents/$incidentId'
     | '/resources/$resourceId'
+    | '/admin'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/admin/assets'
+    | '/admin/centers'
+    | '/admin/simulation'
     | '/centers/$centerId'
     | '/incidents/$incidentId'
     | '/resources/$resourceId'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CentersCenterIdRoute: typeof CentersCenterIdRoute
   IncidentsIncidentIdRoute: typeof IncidentsIncidentIdRoute
   ResourcesResourceIdRoute: typeof ResourcesResourceIdRoute
@@ -110,6 +156,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/resources/$resourceId': {
       id: '/resources/$resourceId'
@@ -132,12 +185,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CentersCenterIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/simulation': {
+      id: '/admin/simulation'
+      path: '/simulation'
+      fullPath: '/admin/simulation'
+      preLoaderRoute: typeof AdminSimulationRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/centers': {
+      id: '/admin/centers'
+      path: '/centers'
+      fullPath: '/admin/centers'
+      preLoaderRoute: typeof AdminCentersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/assets': {
+      id: '/admin/assets'
+      path: '/assets'
+      fullPath: '/admin/assets'
+      preLoaderRoute: typeof AdminAssetsRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAssetsRoute: typeof AdminAssetsRoute
+  AdminCentersRoute: typeof AdminCentersRoute
+  AdminSimulationRoute: typeof AdminSimulationRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAssetsRoute: AdminAssetsRoute,
+  AdminCentersRoute: AdminCentersRoute,
+  AdminSimulationRoute: AdminSimulationRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   CentersCenterIdRoute: CentersCenterIdRoute,
   IncidentsIncidentIdRoute: IncidentsIncidentIdRoute,
   ResourcesResourceIdRoute: ResourcesResourceIdRoute,
