@@ -160,6 +160,7 @@ export function CentersTable({ loading }: CentersTableProps) {
 		getFilteredRowModel: getFilteredRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
+		autoResetPageIndex: false,
 	});
 
 	return (

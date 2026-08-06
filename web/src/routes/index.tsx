@@ -9,6 +9,8 @@ import {
 	Truck,
 	Users,
 } from "lucide-react";
+import { API_BASE } from "#/lib/apiClient.ts";
+import { CenterSchema, IncidentSchema, ResourceSchema } from "#/store/adminStore.ts";
 import { lazy, Suspense, useEffect, useState } from "react";
 
 const DashboardMap = lazy(() => import("#/components/DashboardMap"));
@@ -47,9 +49,9 @@ export const Route = createFileRoute("/")({
 	loader: async (): Promise<LoaderData> => {
 		try {
 			const [incidentsRes, centersRes, resourcesRes] = await Promise.all([
-				fetch("http://localhost:8080/api/v1/incidents").catch(() => null),
-				fetch("http://localhost:8080/api/v1/command-centers").catch(() => null),
-				fetch("http://localhost:8080/api/v1/resources").catch(() => null),
+				fetch(`${API_BASE}/api/v1/incidents`).catch(() => null),
+				fetch(`${API_BASE}/api/v1/command-centers`).catch(() => null),
+				fetch(`${API_BASE}/api/v1/resources`).catch(() => null),
 			]);
 			const incidents = incidentsRes?.ok ? await incidentsRes.json() : [];
 			const centers = centersRes?.ok ? await centersRes.json() : [];
@@ -79,9 +81,9 @@ function Dashboard() {
 		const interval = setInterval(async () => {
 			try {
 				const [incidentsRes, centersRes, resourcesRes] = await Promise.all([
-					fetch("http://localhost:8080/api/v1/incidents"),
-					fetch("http://localhost:8080/api/v1/command-centers"),
-					fetch("http://localhost:8080/api/v1/resources"),
+					fetch(`${API_BASE}/api/v1/incidents`),
+					fetch(`${API_BASE}/api/v1/command-centers`),
+					fetch(`${API_BASE}/api/v1/resources`),
 				]);
 				const incidents = incidentsRes.ok ? await incidentsRes.json() : [];
 				const centers = centersRes.ok ? await centersRes.json() : [];
@@ -94,7 +96,7 @@ function Dashboard() {
 			} catch (_e) {
 				// ignore network errors on poll
 			}
-		}, 5000);
+		}, 30_000);
 		return () => clearInterval(interval);
 	}, []);
 

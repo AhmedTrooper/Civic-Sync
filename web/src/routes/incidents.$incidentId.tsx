@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, lazy, Suspense } from "react";
+import { API_BASE } from "#/lib/apiClient.ts";
 import {
 	ArrowLeft,
 	AlertCircle,
@@ -62,11 +63,11 @@ export const Route = createFileRoute("/incidents/$incidentId")({
 		try {
 			const [incidentRes, centersRes, resourcesRes] = await Promise.all([
 				fetch(
-					`http://localhost:8080/api/v1/incidents/${params.incidentId}`,
+					`${API_BASE}/api/v1/incidents/${params.incidentId}`,
 				).catch(() => null),
-				fetch("http://localhost:8080/api/v1/command-centers").catch(() => null),
+				fetch(`${API_BASE}/api/v1/command-centers`).catch(() => null),
 				fetch(
-					`http://localhost:8080/api/v1/resources?assigned_incident_id=${params.incidentId}`,
+					`${API_BASE}/api/v1/resources?assigned_incident_id=${params.incidentId}`,
 				).catch(() => null),
 			]);
 
@@ -138,10 +139,10 @@ function IncidentDetails() {
 		const interval = setInterval(async () => {
 			try {
 				const [incidentRes, centersRes, resourcesRes] = await Promise.all([
-					fetch(`http://localhost:8080/api/v1/incidents/${incidentId}`),
-					fetch("http://localhost:8080/api/v1/command-centers"),
+					fetch(`${API_BASE}/api/v1/incidents/${incidentId}`),
+					fetch(`${API_BASE}/api/v1/command-centers`),
 					fetch(
-						`http://localhost:8080/api/v1/resources?assigned_incident_id=${incidentId}`,
+						`${API_BASE}/api/v1/resources?assigned_incident_id=${incidentId}`,
 					),
 				]);
 				if (incidentRes.ok) {
@@ -208,7 +209,7 @@ function IncidentDetails() {
 		setDeleting(true);
 		try {
 			const res = await fetch(
-				`http://localhost:8080/api/v1/incidents/${incidentId}`,
+				`${API_BASE}/api/v1/incidents/${incidentId}`,
 				{
 					method: "DELETE",
 					headers: { "x-role": "admin" },

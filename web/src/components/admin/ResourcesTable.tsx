@@ -232,6 +232,7 @@ export function ResourcesTable({ loading }: ResourcesTableProps) {
 		getFilteredRowModel: getFilteredRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
+		autoResetPageIndex: false,
 	});
 
 	return (

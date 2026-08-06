@@ -10,7 +10,7 @@
 
 export const API_BASE: string =
 	(import.meta.env.VITE_API_BASE as string | undefined) ??
-	"http://localhost:8080";
+	"";
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -55,11 +55,16 @@ export async function apiFetch<T = unknown>(
 		finalHeaders.set("content-type", "application/json");
 	}
 
-	const res = await fetch(buildUrl(path), {
+	const targetUrl = buildUrl(path);
+	console.log(`[apiClient] -> ${method} ${targetUrl}`, { auth, role, headers: finalHeaders });
+
+	const res = await fetch(targetUrl, {
 		...rest,
 		method,
 		headers: finalHeaders,
 	});
+
+	console.log(`[apiClient] <- ${method} ${targetUrl} [${res.status} ${res.statusText}]`);
 
 	if (res.status === 204) return null;
 
@@ -73,9 +78,11 @@ export async function apiFetch<T = unknown>(
 				: null) ?? `${res.status} ${res.statusText}`;
 		const code =
 			isRecord(data) && typeof data.code === "string" ? data.code : null;
+		console.error(`[apiClient] Error on ${path}:`, { message, code, status: res.status });
 		throw new ApiError(message, res.status, code);
 	}
 
+	console.log(`[apiClient] Data from ${path}:`, data);
 	return (data ?? null) as T;
 }
 

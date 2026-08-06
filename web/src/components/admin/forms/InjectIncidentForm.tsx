@@ -224,7 +224,7 @@ export function InjectIncidentForm({ onCreated }: InjectIncidentFormProps) {
 					{coordsTouched ? (
 						<button
 							type="button"
-							onClick={() => resetToCenter(watchedCenter, centers)}
+							onClick={() => resetToCenter(watchedCenter ?? "", centers)}
 							className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
 						>
 							Reset to center coords

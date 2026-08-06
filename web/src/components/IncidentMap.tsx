@@ -139,7 +139,7 @@ export default function IncidentMap({
 									: "Divisional Center"}
 							</div>
 							<a
-								href={`/centers/${center.id}`}
+								href={`/centers/${center.name}`}
 								className="inline-block mt-1.5 text-xs font-bold text-indigo-600 hover:underline"
 							>
 								View Center &rarr;
@@ -163,10 +163,10 @@ export default function IncidentMap({
 
 			{/* Other centers (dimmed) */}
 			{allCenters
-				.filter((c) => c.id !== center?.id)
+				.filter((c) => c.name !== center?.name)
 				.map((c) => (
 					<Marker
-						key={c.id}
+						key={c.name}
 						position={[c.latitude, c.longitude]}
 						icon={centerIcon}
 						opacity={0.4}

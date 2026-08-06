@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertCircle } from "lucide-react";
+import { useEffect } from "react";
 import { InjectIncidentForm } from "#/components/admin/forms/InjectIncidentForm.tsx";
 import { IncidentsTable } from "#/components/admin/IncidentsTable.tsx";
 import { useAdminStore } from "#/store/adminStore.ts";
@@ -10,6 +11,9 @@ export const Route = createFileRoute("/admin/simulation")({
 
 function AdminSimulationTab() {
 	const isLoading = useAdminStore((s) => s.isLoading);
+	useEffect(() => {
+		console.log("[AdminSimulationTab] isLoading =", isLoading);
+	}, [isLoading]);
 
 	return (
 		<div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

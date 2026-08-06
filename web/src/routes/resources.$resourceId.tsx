@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, lazy, Suspense } from "react";
+import { API_BASE } from "#/lib/apiClient.ts";
 import {
 	ArrowLeft,
 	MapPin,
@@ -59,18 +60,18 @@ export const Route = createFileRoute("/resources/$resourceId")({
 	loader: async ({ params }): Promise<LoaderData> => {
 		try {
 			const res = await fetch(
-				`http://localhost:8080/api/v1/resources/${params.resourceId}`,
+				`${API_BASE}/api/v1/resources/${params.resourceId}`,
 			);
 			if (!res.ok) return { resource: null, center: null, incident: null };
 			const resource: Resource = await res.json();
 
 			const [centerRes, incidentRes] = await Promise.all([
 				fetch(
-					`http://localhost:8080/api/v1/command-centers/${resource.owner_center_id}`,
+					`${API_BASE}/api/v1/command-centers/${resource.owner_center_id}`,
 				).catch(() => null),
 				resource.assigned_incident_id
 					? fetch(
-							`http://localhost:8080/api/v1/incidents/${resource.assigned_incident_id}`,
+							`${API_BASE}/api/v1/incidents/${resource.assigned_incident_id}`,
 						).catch(() => null)
 					: Promise.resolve(null),
 			]);
@@ -114,17 +115,17 @@ function ResourceDetails() {
 		const interval = setInterval(async () => {
 			try {
 				const res = await fetch(
-					`http://localhost:8080/api/v1/resources/${resourceId}`,
+					`${API_BASE}/api/v1/resources/${resourceId}`,
 				);
 				if (res.ok) {
 					const resource: Resource = await res.json();
 					const [centerRes, incidentRes] = await Promise.all([
 						fetch(
-							`http://localhost:8080/api/v1/command-centers/${resource.owner_center_id}`,
+							`${API_BASE}/api/v1/command-centers/${resource.owner_center_id}`,
 						).catch(() => null),
 						resource.assigned_incident_id
 							? fetch(
-									`http://localhost:8080/api/v1/incidents/${resource.assigned_incident_id}`,
+									`${API_BASE}/api/v1/incidents/${resource.assigned_incident_id}`,
 								).catch(() => null)
 							: Promise.resolve(null),
 					]);
@@ -175,7 +176,7 @@ function ResourceDetails() {
 		setUpdating(true);
 		try {
 			const res = await fetch(
-				`http://localhost:8080/api/v1/resources/${resource.id}/status`,
+				`${API_BASE}/api/v1/resources/${resource.id}/status`,
 				{
 					method: "PATCH",
 					headers: {
@@ -207,7 +208,7 @@ function ResourceDetails() {
 		setDeleting(true);
 		try {
 			const res = await fetch(
-				`http://localhost:8080/api/v1/resources/${resource.id}`,
+				`${API_BASE}/api/v1/resources/${resource.id}`,
 				{
 					method: "DELETE",
 					headers: { "x-role": "admin" },

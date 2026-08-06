@@ -1,0 +1,1239 @@
+$ vite dev --port 3000
+4:47:43 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v8.1.0  ready in 1130 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/components/admin/IncidentsTable.tsx:62:2 [IncidentsTable] Rendered, loading = false
+[Client] src/components/admin/IncidentsTable.tsx:65:2 [IncidentsTable] Store state: {
+  incidentsCount: 25,
+  centersCount: 8,
+  filters: { search: '', severity: 'ALL', status: 'ALL', page: 1 }
+}
+[Client] src/components/admin/IncidentsTable.tsx:96:2 [IncidentsTable] Filtered rows count = 25
+[Client] src/routes/admin.simulation.tsx:14:3 [AdminSimulationTab] useAdminStore selector: isLoading = false
+[Client] src/routes/admin.tsx:113:2 [AdminLiveControlsInner] Rendered
+LOG /src/routes/admin.tsx:37:2
+ →  [AdminLayout] Rendered
+LOG /src/routes/admin.tsx:105:3
+ →  [AdminLiveControls] Not mounted yet (SSR)
+LOG /src/routes/admin.tsx:182:3
+ →  [ClientOnlyOutlet] Not mounted yet (SSR)

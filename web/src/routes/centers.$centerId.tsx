@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, lazy, Suspense } from "react";
+import { API_BASE } from "#/lib/apiClient.ts";
 import {
 	ArrowLeft,
 	MapPin,
@@ -63,12 +64,12 @@ export const Route = createFileRoute("/centers/$centerId")({
 		try {
 			const [centerRes, resourcesRes, incidentsRes] = await Promise.all([
 				fetch(
-					`http://localhost:8080/api/v1/command-centers/${params.centerId}`,
+					`${API_BASE}/api/v1/command-centers/${params.centerId}`,
 				).catch(() => null),
 				fetch(
-					`http://localhost:8080/api/v1/resources?owner_center_id=${params.centerId}`,
+					`${API_BASE}/api/v1/resources?owner_center_id=${params.centerId}`,
 				).catch(() => null),
-				fetch("http://localhost:8080/api/v1/incidents").catch(() => null),
+				fetch(`${API_BASE}/api/v1/incidents`).catch(() => null),
 			]);
 
 			const center = centerRes?.ok ? await centerRes.json() : null;
@@ -132,11 +133,11 @@ function CenterDetails() {
 		const interval = setInterval(async () => {
 			try {
 				const [centerRes, resourcesRes, incidentsRes] = await Promise.all([
-					fetch(`http://localhost:8080/api/v1/command-centers/${centerId}`),
+					fetch(`${API_BASE}/api/v1/command-centers/${centerId}`),
 					fetch(
-						`http://localhost:8080/api/v1/resources?owner_center_id=${centerId}`,
+						`${API_BASE}/api/v1/resources?owner_center_id=${centerId}`,
 					),
-					fetch("http://localhost:8080/api/v1/incidents"),
+					fetch(`${API_BASE}/api/v1/incidents`),
 				]);
 				if (centerRes.ok) {
 					const center = await centerRes.json();
@@ -194,7 +195,7 @@ function CenterDetails() {
 		setDeleting(true);
 		try {
 			const res = await fetch(
-				`http://localhost:8080/api/v1/centers/${centerId}`,
+				`${API_BASE}/api/v1/centers/${centerId}`,
 				{
 					method: "DELETE",
 					headers: { "x-role": "admin" },

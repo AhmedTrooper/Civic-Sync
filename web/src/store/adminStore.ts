@@ -440,8 +440,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 		})),
 
 	fetchData: async () => {
+		console.log("[adminStore] fetchData() triggered");
 		set({ isLoading: true });
 		try {
+			console.log("[adminStore] Fetching centers, incidents, resources, simulation...");
 			const [centersRes, incidentsRes, resourcesRes, simRes] =
 				await Promise.all([
 					safeApi<unknown[]>("/api/v1/centers"),
@@ -475,9 +477,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 				if (parsed.success) simStatus = parsed.data;
 			}
 
+			console.log("[adminStore] fetchData() success, setting state", { centers: centers.length, incidents: incidents.length, resources: resources.length, simStatus });
 			set({ centers, incidents, resources, simStatus, isLoading: false });
 		} catch (error) {
-			console.error("Failed to fetch admin data:", errorMessage(error));
+			console.error("[adminStore] Failed to fetch admin data:", errorMessage(error), error);
 			set({ isLoading: false });
 		}
 	},
