@@ -22,6 +22,18 @@ Real emergencies generate the worst possible operating conditions: spotty mobile
 | **Operator needs to see why a decision was made** | Every dispatch envelope carries a `dispatch_multi_center_response` tool call with a **human-readable justification** built from the same arithmetic the engine used — reviewable with or without an LLM. |
 | **Two incidents compete for the same ambulance** | Conflict prevention is enforced **twice**: claimed-set in planning + `assigned_incident_id IS NULL` row-guard under `FOR UPDATE` at commit. **Double-allocation is physically impossible.** |
 
+### Dependency-by-dependency: what survives when it dies
+
+The principle: **every external dependency is optional, every degradation is observable, every dispatch decision is deterministic in its core and explainable in its surface.**
+
+| Component | Status | Behavior when unavailable |
+|---|---|---|
+| PostgreSQL | Optional | API boots in **in-memory mode** (`Arc<Mutex<HashMap>>`); same router, same semantics, no persistence |
+| Redis | Optional | Cache calls become **direct Haversine computation**; `cache_operations_total{result="error"}` increments |
+| AI provider | Optional | Engine runs the **deterministic heuristic**; `dispatch_total{fallback="llm_error"}` increments; same envelope, same justification structure |
+| OTel SDK | Optional | Layer is skipped; `tracing_subscriber` alone takes over; log output continues unchanged |
+| WebSocket client | Best-effort | The 60 s conditional flush produces no frames; clients re-fetch on next poll — the dashboard never blocks |
+
 ---
 
 ## At a glance
@@ -83,40 +95,39 @@ The dashed edge from Redis back to the API represents the **fail-soft fallback p
 
 ### Fail-soft behavior (the part judges will love)
 
+Every Redis interaction is wrapped in `if let Some(client) = redis && let Ok(conn) = ...`. The function accepts **four input shapes** and produces the **same correct output** for each:
+
+| Input shape | Behavior |
+|---|---|
+| `Some(client)`, connection succeeds, key present | Hit; return cached UUID |
+| `Some(client)`, connection succeeds, key missing | Compute; best-effort SETEX; return UUID |
+| `Some(client)`, connection fails | Compute; SETEX skipped; return UUID; metric increments |
+| `None` | Compute directly; return UUID; metric increments |
+
 ```rust
-// Skeleton of the actual call site
-if let Some(client) = redis
-    && let Ok(mut conn) = client.get_multiplexed_async_connection().await
-{
-    let cached: redis::RedisResult<String> = conn.get(&key).await;
-    if let Ok(uuid_str) = cached
-        && let Ok(uuid) = Uuid::parse_str(&uuid_str)
-    {
-        return uuid;
-    }
-}
-
-// ANY failure path (no client, no connection, no key, parse error) drops
-// us here — pure computation, no external dependency.
-let answer = compute_nearest_center(centers, latitude, longitude);
-
-// Best-effort writeback; failure here is also non-fatal.
-if let Some(client) = redis && let Ok(mut conn) = ... {
-    let _: redis::RedisResult<()> = conn.set_ex(&key, answer.to_string(), 60).await;
-}
-
-answer
+// Public signature — Redis is optional in the type system
+pub async fn nearest_center(
+    redis: Option<&redis::Client>,
+    centers: &[Center],
+    latitude: f64,
+    longitude: f64,
+) -> Uuid
 ```
 
 Three guarantees this gives us:
 
 1. **Redis is never on the critical path.** A Redis outage cannot raise p99 latency above the in-memory Haversine cost — it simply removes the cache.
-2. **No silent correctness loss.** Falling back is equivalent to a cold cache; both produce the same `Uuid` for the same coordinates (verified by `cache_returns_same_answer_for_clustered_coordinates`).
+2. **No silent correctness loss.** Falling back is equivalent to a cold cache; both produce the same `Uuid` for the same coordinates — verified by the unit test `cache_returns_same_answer_for_clustered_coordinates`.
 3. **The failure is observable.** `civic_sync_cache_operations_total{op="get|set", result="hit|miss|error"}` makes the degradation visible to dashboards — operators can spot the moment Redis goes away.
 
 ### Test-mode escape hatch
 
-`clear_for_tests(redis)` is provided so integration tests don't leak state across scenarios.
+`clear_for_tests(redis)` is provided so integration tests don't leak state across scenarios. No-op when `redis` is `None`.
+
+```rust
+pub async fn clear_for_tests(redis: Option<&redis::Client>)
+pub const DISPATCH_TTL_SECS: u64 = 60;
+```
 
 ---
 
@@ -255,6 +266,68 @@ sequenceDiagram
 
 ---
 
+## Engine internals — module map & pipeline
+
+### Module map
+
+| Module | Responsibility |
+| ------ | -------------- |
+| `src/main.rs` | Boot: config → pool → migrations → drivers → listener, graceful shutdown |
+| `src/config.rs` | Env-driven config; all-or-nothing AI block validation; `AUTOPILOT` flag |
+| `src/app.rs` | Router, CORS, metrics/trace layers, RBAC-guarded `/api/v1` nest |
+| `src/auth.rs` | Header-based RBAC: mutations require `x-role: admin` or `dispatcher` |
+| `src/state.rs` | Shared `AppState` (pool or in-memory maps, orchestrator, driver channels) |
+| `src/features/incidents.rs` | Incident CRUD + PATCH deltas, priority scoring, Δ-trigger fan-out |
+| `src/features/resources.rs` | Resource CRUD + status hook (`STUCK` fires re-route trigger) |
+| `src/features/centers.rs` | The 8 divisional hubs (Dhaka core), seeded, delete-protected |
+| `src/features/dispatch.rs` | Multi-center planning engine + explainable queue + transactional apply |
+| `src/features/orchestrator.rs` | rig LLM enrichment (7 wired providers), §5B semaphore gate (3/30s) |
+| `src/features/triggers.rs` | 30-second ticker + delta-trigger driver + Autopilot commit cycle |
+| `src/features/flush.rs` | 60-second conditional flush of `server_synced_at` stamps |
+| `src/features/sync.rs` | WebSocket relay of `FlushNotice` frames for the dashboard |
+| `src/features/simulation.rs` | Pause/resume disaster generator + manual crisis injection |
+| `src/cache.rs` | Redis-backed nearest-center cache (quantised coordinates, 60s TTL, fail-soft) |
+| `src/observability.rs` | Prometheus counters/histograms + OpenTelemetry stdout tracing |
+| `src/error.rs` | Typed `ApiError` → stable JSON error bodies |
+
+### The dispatch pipeline (5 steps)
+
+1. **Prioritize** — every ACTIVE incident is scored by `priority_score`: severity (1–5) base weight + casualty load + affected population + time-on-grid escalation. Highest score plans first, so scarce assets always go to the most urgent crisis.
+2. **Plan (multi-center)** — for each incident the engine selects up to 3 assets: first from the incident's primary (nearest) hub, then from the **Dhaka Core center** as the national fallback, then from any other hub — each layer ordered by Haversine great-circle distance.
+3. **Prevent conflicts** — a resource claimed by a higher-priority incident in the same cycle is never re-offered (planning set), and apply runs under row locks with an `assigned_incident_id IS NULL` guard (commit time). **Double-allocation is impossible.**
+4. **Explain** — every envelope is a `dispatch_multi_center_response` tool call carrying a human-readable justification built from the exact numbers the engine used. When an LLM is configured it may refine the wording — **never the allocation.**
+5. **Commit** — `POST /dispatch/apply` (operator approval) or the 30-second **Autopilot** cycle links resources (`EN_ROUTE`, distance stamped) and flips the incident to `DISPATCHED`. Idempotent by design.
+
+### AI orchestration (rig, provider-agnostic)
+
+Set `AI_PROVIDER` + `AI_MODEL` + `AI_API_KEY` (all three or none) to enable LLM enrichment — any `rig-core` 0.39 provider string is accepted. **7 providers wired**: `openai`, `anthropic`, `gemini`, `deepseek`, `cohere`, `ollama`; others fall back gracefully with a `warn!`. Without credentials the deterministic heuristic runs the entire pipeline.
+
+**Concurrency gate:** per spec §5B, max **3 LLM calls per 30-second rolling window** via `SemaphoreGate`. Exhaustion falls back to the heuristic and is counted in Prometheus:
+
+```
+civic_sync_semaphore_acquire_total{result="acquired"}  3
+civic_sync_semaphore_acquire_total{result="throttled"} 1
+```
+
+Judges can see live whether the AI is keeping up or whether the heuristic is carrying the load — and the user-visible behavior is identical in both cases.
+
+**Smoke endpoint:** `POST /api/v1/dispatch/smoke` exposes the full diagnostic: heuristic plan, whether the LLM was attempted, raw model patches, and any error — so the AI path is verifiable end-to-end without a real incident.
+
+### Background drivers
+
+| Driver | Cadence | Contract |
+| ------ | ------- | -------- |
+| Triggers | 30 s | Re-plan (+ Autopilot apply). Instant cycle on Δ-casualty ≥ 10, severity→5, resource STUCK |
+| Flush | 60 s | Stamps `server_synced_at` **only if data changed**; broadcasts `FlushNotice` |
+| Simulator | 60 s | Optional synthetic disasters; paused by default (`SIMULATION_AUTOSTART`) |
+
+The flush driver is **conditional** for two reasons:
+
+1. **Quiet periods don't waste bandwidth** — a field operator on a shaky mobile link doesn't receive `flush` frames for hours of unchanged state.
+2. **The dashboard's React render loop stays calm** — fewer state transitions mean fewer re-renders and lower CPU/battery cost on the operator's device.
+
+---
+
 ## API surface (all routes prefixed `/api`)
 
 ### Command centers
@@ -322,7 +395,14 @@ Civic-Sync/
                                               └─ all-or-nothing: if any one is set, all three required
 ```
 
-See **[`api/README.md`](api/README.md)** for the engine internals and **[`web/README.md`](web/README.md)** for the dashboard pages.
+See **[`web/README.md`](web/README.md)** for the dashboard architecture, contract tests, and route map. Backend implementation notes live in **[`api/README.md`](api/README.md)**.
+
+### Testing & deployment
+
+- Unit tests live alongside each module (`config`, `cache`, `orchestrator`: provider mapping, patch validation, semaphore window semantics, cache fallback).
+- Integration tests in `api/tests/api.rs` cover priority-score invariants and router boot.
+- `scripts/smoke.sh` exercises the live API end-to-end, including the full `recommend → apply → DISPATCHED` cycle and RBAC enforcement.
+- `Dockerfile` is a two-stage build (`rust:slim-bookworm` → `debian-slim`) producing the `civic-sync-api` binary; `docker-compose.yml` provisions PostGIS, Redis, and MinIO (bucket auto-created). All state lives in the managed stores — the API itself is stateless and horizontally scalable.
 
 ---
 
