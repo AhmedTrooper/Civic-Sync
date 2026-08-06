@@ -48,36 +48,42 @@ async fn run_socket(socket: WebSocket, state: AppState) {
         return;
     }
 
-    // 2) forward each FlushNotice as a `flush` frame.
+    // 2) forward each FlushNotice as a `flush` frame. Both arms run
+    //    concurrently via `select!`: flush frames are delivered even when
+    //    the client never sends anything, and a client close frame ends
+    //    the connection immediately instead of waiting for the next tick.
     loop {
-        match receiver.recv().await {
-            Ok(notice) => {
-                let frame = serde_json::json!({
-                    "type": "flush",
-                    "notice": notice,
-                });
-                if send_json(&mut sender, &frame).await.is_err() {
+        tokio::select! {
+            notice = receiver.recv() => match notice {
+                Ok(notice) => {
+                    let frame = serde_json::json!({
+                        "type": "flush",
+                        "notice": notice,
+                    });
+                    if send_json(&mut sender, &frame).await.is_err() {
+                        break;
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                    tracing::warn!(skipped, "ws sync subscriber lagged");
+                    let frame = serde_json::json!({
+                        "type": "lagged",
+                        "skipped": skipped,
+                    });
+                    if send_json(&mut sender, &frame).await.is_err() {
+                        break;
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    let _ = sender.send(Message::Close(None)).await;
                     break;
                 }
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                tracing::warn!(skipped, "ws sync subscriber lagged");
-                let frame = serde_json::json!({
-                    "type": "lagged",
-                    "skipped": skipped,
-                });
-                if send_json(&mut sender, &frame).await.is_err() {
-                    break;
-                }
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                let _ = sender.send(Message::Close(None)).await;
-                break;
-            }
-        }
-        // Honour client-initiated close frames.
-        if let Some(Ok(Message::Close(_))) = socket.next().await {
-            break;
+            },
+            frame = socket.next() => match frame {
+                Some(Ok(Message::Close(_))) => break,
+                Some(_) => {} // client keep-alive chatter is consumed silently
+                None => break, // peer dropped the socket
+            },
         }
     }
 }

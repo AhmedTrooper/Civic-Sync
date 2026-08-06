@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useAdminStore } from '../src/store/adminStore';
+import { useAdminStore, CenterSchema, IncidentSchema, ResourceSchema, SimulationStatusSchema, IncidentStatusEnum, ResourceStatusEnum, ResourceTypeEnum } from '../src/store/adminStore';
 
 describe('Admin Store', () => {
 	beforeEach(() => {
@@ -8,8 +8,8 @@ describe('Admin Store', () => {
 			centers: [],
 			incidents: [],
 			resources: [],
+			simStatus: null,
 			isLoading: false,
-			error: null,
 		});
 	});
 
@@ -18,8 +18,8 @@ describe('Admin Store', () => {
 		expect(state.centers).toEqual([]);
 		expect(state.incidents).toEqual([]);
 		expect(state.resources).toEqual([]);
+		expect(state.simStatus).toBeNull();
 		expect(state.isLoading).toBe(false);
-		expect(state.error).toBeNull();
 	});
 
 	it('should allow setting centers', () => {

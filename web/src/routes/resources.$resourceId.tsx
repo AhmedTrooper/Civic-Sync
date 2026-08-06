@@ -401,7 +401,7 @@ function ResourceDetails() {
 										className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
 									>
 										<option value="EN_ROUTE">EN ROUTE</option>
-										<option value="STUCK font-bold">STUCK</option>
+										<option value="STUCK">STUCK</option>
 										<option value="REJECTED">REJECTED</option>
 										<option value="COMPLETED">COMPLETED</option>
 									</select>

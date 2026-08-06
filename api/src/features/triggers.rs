@@ -9,11 +9,13 @@
 //! 3. A resource status transition to `STUCK` (the resource can no longer
 //!    complete its assigned leg and must be re-routed).
 //!
-//! All three funnel through the same orchestrator entry point. Since the
-//! orchestrator already owns the §5B 3-tasks/30s semaphore gate, the trigger
-//! driver just calls `orchestrator.dispatch` and lets the gate handle
-//! throttling. This means a single 30-second tick can absorb any number of
-//! triggers fired inside the same window — no LLM call cascade.
+//! All three funnel through the same evaluation cycle
+//! ([`evaluate_cycle`]): plan via the orchestrator (LLM-enriched) when an
+//! LLM is configured, otherwise via the deterministic heuristic, and — in
+//! Autopilot mode — commit the plan immediately. Since the orchestrator
+//! already owns the §5B 3-tasks/30s semaphore gate, throttling is
+//! inherited: a single 30-second tick can absorb any number of triggers
+//! fired inside the same window — no LLM call cascade.
 //!
 //! The driver is spawned once from `main.rs` after the listener is bound.
 //! It honours a `tokio::sync::watch::Receiver<bool>` shutdown signal so the
@@ -93,7 +95,13 @@ pub async fn run(
 }
 
 /// Handle a single ticker fire. Always resets the gate so the next window
-/// starts clean; if an orchestrator is wired, also re-runs dispatch.
+/// starts clean, then re-evaluates the dispatch plan. With an orchestrator
+/// the LLM enrichment path runs; without one the deterministic heuristic
+/// keeps the grid moving (data.md §7 fallback contract). In Autopilot mode
+/// the resulting plan is committed immediately — that is the §5D
+/// "Autopilot Mode" — otherwise the plan is computed hot so
+/// `POST /dispatch/recommendations` and the operator dashboard see fresh
+/// envelopes.
 async fn run_tick(
     state: &AppState,
     orchestrator: &Arc<Option<crate::features::orchestrator::Orchestrator>>,
@@ -101,17 +109,13 @@ async fn run_tick(
     if let Some(orch) = orchestrator.as_ref() {
         orch.gate.reset_window().await;
     }
-    if let Some(orch) = orchestrator.as_ref()
-        && let Err(error) = orch.dispatch(state).await
-    {
-        tracing::warn!(error = %error, "triggers tick dispatch failed");
-    }
+    evaluate_cycle(state, orchestrator, "tick").await;
 }
 
 /// Handle a discrete trigger event. The 30-second tick is the authoritative
-/// re-evaluation point — events just bump the priority score of the next
-/// tick by ensuring the orchestrator's gate is fresh so an immediate
-/// dispatch call is allowed.
+/// re-evaluation point — events just make the reaction immediate: the gate
+/// is reset so this event is never throttled away, and a fresh dispatch
+/// cycle runs right now.
 async fn run_event(
     state: &AppState,
     orchestrator: &Arc<Option<crate::features::orchestrator::Orchestrator>>,
@@ -149,8 +153,59 @@ async fn run_event(
             "incident_severity_escalated"
         }
     };
-    if let Some(orch) = orchestrator.as_ref() {
-        let _ = orch.dispatch(state).await;
+    evaluate_cycle(state, orchestrator, event_label).await;
+}
+
+/// One dispatch evaluation cycle shared by the ticker and the event path.
+/// Plans via the orchestrator (LLM-enriched) when configured, otherwise via
+/// the deterministic heuristic, then commits the plan when Autopilot mode
+/// is enabled. Errors are logged, never fatal: the next tick is the safety
+/// net.
+async fn evaluate_cycle(
+    state: &AppState,
+    orchestrator: &Arc<Option<crate::features::orchestrator::Orchestrator>>,
+    context: &str,
+) {
+    let envelopes = match orchestrator.as_ref() {
+        Some(orch) => match orch.dispatch(state).await {
+            Ok(envelopes) => envelopes,
+            Err(error) => {
+                tracing::warn!(error = %error, context, "dispatch planning failed");
+                return;
+            }
+        },
+        None => match crate::features::dispatch::heuristic_dispatch(state).await {
+            Ok(envelopes) => envelopes,
+            Err(error) => {
+                tracing::warn!(error = %error, context, "heuristic planning failed");
+                return;
+            }
+        },
+    };
+    if envelopes.is_empty() {
+        tracing::debug!(context, "dispatch cycle: nothing to plan");
+        return;
     }
-    tracing::debug!(kind = event_label, "trigger event processed");
+    if !state.config.autopilot {
+        tracing::debug!(
+            context,
+            envelopes = envelopes.len(),
+            "dispatch cycle planned (human-in-the-loop: awaiting /dispatch/apply)"
+        );
+        return;
+    }
+    match crate::features::dispatch::apply_envelopes(state, &envelopes).await {
+        Ok(summaries) => {
+            let attached: usize = summaries.iter().map(|s| s.resources_attached).sum();
+            tracing::info!(
+                context,
+                envelopes = summaries.len(),
+                resources_attached = attached,
+                "autopilot dispatch cycle applied"
+            );
+        }
+        Err(error) => {
+            tracing::warn!(error = %error, context, "autopilot apply failed");
+        }
+    }
 }

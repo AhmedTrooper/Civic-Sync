@@ -1,45 +1,87 @@
 import { create } from "zustand";
 import { z } from "zod";
 
-// Zod schemas for validation
-export const CenterSchema = z.object({
-	id: z.string().uuid(),
-	name: z.string(),
-	latitude: z.number(),
-	longitude: z.number(),
-	is_core_center: z.boolean(),
-});
+// Strict Zod schemas that mirror the Rust response models in api/src/features/*.
+// Any field drift between web and api is caught here: if a field is renamed
+// on the backend, the page logs "validation failed" instead of silently
+// showing "undefined" in the UI. Keep these in sync with the corresponding
+// `pub struct` in api/src/features/{centers,incidents,resources,simulation}.rs.
 
-export const IncidentSchema = z.object({
-	id: z.string().uuid(),
-	title: z.string(),
-	primary_center_id: z.string().uuid(),
-	severity_level: z.number(),
-	affected_people: z.number(),
-	casualty_count: z.number(),
-	latitude: z.number(),
-	longitude: z.number(),
-	status: z.string(),
-});
+export const IncidentStatusEnum = z.enum(["ACTIVE", "DISPATCHED", "RESOLVED"]);
+export const ResourceStatusEnum = z.enum([
+	"EN_ROUTE",
+	"STUCK",
+	"REJECTED",
+	"COMPLETED",
+]);
+export const ResourceTypeEnum = z.enum([
+	"AMBULANCE",
+	"BOAT",
+	"HELICOPTER",
+	"RELIEF_TRUCK",
+	"FOOD_PACK",
+	"WATER_SUPPLY",
+	"SHELTER_KIT",
+	"MEDICAL_RATION",
+]);
 
-export const ResourceSchema = z.object({
-	id: z.string().uuid(),
-	owner_center_id: z.string().uuid(),
-	assigned_incident_id: z.string().uuid().nullable(),
-	unit_identifier: z.string(),
-	resource_type: z.string(),
-	status: z.string(),
-	latitude: z.number(),
-	longitude: z.number(),
-	total_capacity: z.number(),
-	current_capacity: z.number(),
-});
+export const CenterSchema = z
+	.object({
+		id: z.string().uuid(),
+		name: z.string(),
+		is_core_center: z.boolean(),
+		latitude: z.number(),
+		longitude: z.number(),
+		created_at: z.string(),
+		updated_at: z.string(),
+		server_synced_at: z.string().nullable(),
+	})
+	.strict();
 
-export const SimulationStatusSchema = z.object({
-	paused: z.boolean(),
-	generated: z.number(),
-	tick_interval_seconds: z.number(),
-});
+export const IncidentSchema = z
+	.object({
+		id: z.string().uuid(),
+		title: z.string(),
+		primary_center_id: z.string().uuid(),
+		severity_level: z.number().int().min(1).max(5),
+		affected_people: z.number().int().nonnegative(),
+		casualty_count: z.number().int().nonnegative(),
+		latitude: z.number().min(-90).max(90),
+		longitude: z.number().min(-180).max(180),
+		status: IncidentStatusEnum,
+		created_at: z.string(),
+		updated_at: z.string(),
+		server_synced_at: z.string().nullable(),
+	})
+	.strict();
+
+export const ResourceSchema = z
+	.object({
+		id: z.string().uuid(),
+		owner_center_id: z.string().uuid(),
+		assigned_incident_id: z.string().uuid().nullable(),
+		resource_type: ResourceTypeEnum,
+		unit_identifier: z.string(),
+		status: ResourceStatusEnum,
+		distance_passed_km: z.number(),
+		distance_remaining_km: z.number(),
+		latitude: z.number(),
+		longitude: z.number(),
+		total_capacity: z.number().int(),
+		current_capacity: z.number().int(),
+		created_at: z.string(),
+		updated_at: z.string(),
+		server_synced_at: z.string().nullable(),
+	})
+	.strict();
+
+export const SimulationStatusSchema = z
+	.object({
+		paused: z.boolean(),
+		generated: z.number().int().nonnegative(),
+		tick_interval_seconds: z.number().int().positive(),
+	})
+	.strict();
 
 export type Center = z.infer<typeof CenterSchema>;
 export type Incident = z.infer<typeof IncidentSchema>;

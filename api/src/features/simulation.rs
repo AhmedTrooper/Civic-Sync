@@ -152,6 +152,20 @@ pub async fn run(
     }
 }
 
+/// Load the center list from Postgres when configured, else from the
+/// in-memory seed map. Database mode must never use the in-memory map
+/// here: its deterministic v5 seed ids do not match the DB rows
+/// (`gen_random_uuid()`), which would violate the `primary_center_id`
+/// foreign key on insert.
+async fn centers_for(
+    state: &AppState,
+) -> Result<Vec<crate::features::centers::Center>, crate::error::ApiError> {
+    match &state.database {
+        Some(pool) => crate::features::centers::list_all_postgres(pool).await,
+        None => Ok(state.centers.read().await.values().cloned().collect()),
+    }
+}
+
 /// Build a random incident using a deterministic seed pattern. The randomness
 /// is process-local; no LLM involvement per §5D (this is the *heuristic*
 /// disaster generator, not AI).
@@ -196,10 +210,10 @@ async fn synthesise_incident(
 
     let now = Utc::now();
     let id = uuid::Uuid::new_v4();
-    let centers = state.centers.read().await;
+    let centers = centers_for(state).await?;
     let mut closest_center_id = uuid::Uuid::nil();
     let mut min_dist = f64::MAX;
-    for center in centers.values() {
+    for center in &centers {
         let dist = haversine_distance(
             payload.latitude,
             payload.longitude,
@@ -211,7 +225,6 @@ async fn synthesise_incident(
             closest_center_id = center.id;
         }
     }
-    drop(centers);
 
     let incident = crate::features::incidents::Incident {
         id,

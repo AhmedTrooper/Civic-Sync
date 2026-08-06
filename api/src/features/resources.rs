@@ -410,7 +410,8 @@ pub(crate) async fn list_all_postgres(pool: &sqlx::PgPool) -> Result<Vec<Resourc
 pub(crate) async fn fetch_postgres(pool: &sqlx::PgPool, id: Uuid) -> Result<Resource, ApiError> {
     let row = sqlx::query_as::<_, ResourceRow>(
         r#"SELECT id, owner_center_id, assigned_incident_id, resource_type, unit_identifier,
-                  status, distance_passed_km, distance_remaining_km, latitude, longitude,
+                  status, distance_passed_km, distance_remaining_km,
+                  current_latitude AS latitude, current_longitude AS longitude,
                   total_capacity, current_capacity,
                   created_at, updated_at, server_synced_at
            FROM resources WHERE id = $1"#,
@@ -533,8 +534,10 @@ pub struct ResourceRow {
 ///
 /// Locks the resource row, flips the status, attaches it to an incident,
 /// and stamps the remaining travel distance. data.md section 6.4 imposes
-/// no transition rules, so any status is accepted here.
-#[allow(dead_code)] // consumed by src/features/dispatch.rs
+/// no transition rules, so any status is accepted here. The
+/// `assigned_incident_id IS NULL` guard is the conflict-prevention
+/// contract: two envelopes can never claim the same asset. Returns the
+/// number of rows updated (0 = the asset was already committed elsewhere).
 pub(crate) async fn dispatch_link_postgres(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     id: Uuid,
@@ -542,14 +545,14 @@ pub(crate) async fn dispatch_link_postgres(
     new_status: ResourceStatus,
     distance_remaining_km: f64,
     now: DateTime<Utc>,
-) -> Result<(), ApiError> {
-    sqlx::query(
+) -> Result<u64, ApiError> {
+    let result = sqlx::query(
         r#"UPDATE resources
            SET status = $1,
                assigned_incident_id = $2,
                distance_remaining_km = $3,
                updated_at = $4
-           WHERE id = $5"#,
+           WHERE id = $5 AND assigned_incident_id IS NULL"#,
     )
     .bind(
         serde_json::to_value(new_status)
@@ -564,7 +567,7 @@ pub(crate) async fn dispatch_link_postgres(
     .bind(id)
     .execute(&mut **tx)
     .await?;
-    Ok(())
+    Ok(result.rows_affected())
 }
 
 impl From<ResourceRow> for Resource {

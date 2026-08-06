@@ -45,6 +45,12 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
             "/v1/centers/{id}",
             get(centers::get_one).delete(centers::delete),
         )
+        // Compatibility alias: the admin dashboard addresses the hubs as
+        // `command-centers` (their spec §1 name). Serving the same
+        // handlers under both paths keeps the frontend contract intact
+        // without forking any logic.
+        .route("/v1/command-centers", get(centers::list))
+        .route("/v1/command-centers/{id}", get(centers::get_one))
         .route(
             "/v1/incidents",
             post(incidents::create).get(incidents::list),

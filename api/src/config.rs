@@ -12,6 +12,12 @@ pub struct Config {
     pub s3: S3Config,
     pub ai: AiConfig,
     pub allowed_origins: Vec<String>,
+    /// Autopilot Mode (data.md §5D human-in-the-loop flip side): when true
+    /// the 30-second trigger driver auto-applies the dispatch plan instead
+    /// of waiting for `POST /api/v1/dispatch/apply`. Defaults to true so a
+    /// bare `cargo run` demo shows autonomous dispatch; set `AUTOPILOT=false`
+    /// for strict human-in-the-loop operation.
+    pub autopilot: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -72,6 +78,15 @@ impl Config {
             api_key: env_opt("AI_API_KEY"),
         };
         validate_ai_config(&ai)?;
+        let autopilot = std::env::var("AUTOPILOT")
+            .ok()
+            .map(|raw| {
+                !matches!(
+                    raw.trim().to_ascii_lowercase().as_str(),
+                    "0" | "false" | "no" | "off"
+                )
+            })
+            .unwrap_or(true);
         let allowed_origins = std::env::var("ALLOWED_ORIGINS")
             .ok()
             .map(|raw| {
@@ -91,6 +106,7 @@ impl Config {
             s3,
             ai,
             allowed_origins,
+            autopilot,
         })
         .context("load configuration")
     }
@@ -106,6 +122,7 @@ impl Config {
             s3: S3Config::default(),
             ai: AiConfig::default(),
             allowed_origins: Vec::new(),
+            autopilot: true,
         })
     }
 }

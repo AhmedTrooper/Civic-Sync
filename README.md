@@ -1,12 +1,25 @@
 # CivicSync
 
-**AI-Orchestrated National Emergency Response & Resource Optimization Platform**
+**National-scale emergency dispatch with provable conflict-freedom and explainable AI.**
+
+When floods, cyclones, and urban disasters hit Bangladesh's eight divisions simultaneously, neighboring command centers cannot see each other's deficits — and ambulances, helicopters, boats, and relief supplies get dispatched by instinct. CivicSync turns fragmented disaster response into **one ranked, coordinated, explainable national grid**.
 
 ---
 
-## Overview
+## At a glance
 
-CivicSync is a real-time, AI-powered emergency response coordination platform designed for nationwide disaster management across Bangladesh. The system connects **8 divisional command hubs** (Dhaka Core + Chittagong, Rajshahi, Khulna, Barisal, Sylhet, Rangpur, Mymensingh) into a unified emergency grid. It continuously ingests multi-region incident streams, dynamically prioritizes crises by severity and geospatial proximity, and orchestrates optimal resource dispatch through an AI decision engine — all with full explainability and human-in-the-loop controls.
+| | |
+|---|---|
+| **Scale** | **8 divisional hubs** wired into one grid (Dhaka as Core + 7 division centers) |
+| **Decision loop** | **30 s** background re-plan; **instant** on casualty Δ ≥ 10 / severity → 5 / asset STUCK |
+| **Conflict model** | Priority-ordered planning + claimed-set in memory + `assigned_incident_id IS NULL` row guard at commit ⇒ **one ambulance can never be promised to two crises** |
+| **AI** | Provider-agnostic (`OpenAI`, `Anthropic`, `Gemini`, `DeepSeek`, `Cohere`, `Ollama`); LLM may refine the *justification* text — **never the allocation**. No key configured ⇒ identical pipeline runs on the deterministic heuristic. |
+| **AI rate-limit** | **3 LLM calls per 30 s** rolling window via `tokio::Semaphore`; overflow degrades to heuristic and increments a Prometheus counter |
+| **Sync** | **60 s** conditional flush — dashboard updates only when rows actually changed |
+| **Modes** | Full Postgres + Redis + MinIO stack — **and** an in-memory mode that boots identically with zero external dependencies (see quickstart below) |
+| **Self-tests** | **4 layers, ~1 min, all green**: cargo check / clippy / fmt + live smoke + frontend body contract + Zod schema contract |
+
+> **No AI key? No database? `cargo run` is the entire demo.**
 
 ---
 
@@ -14,12 +27,12 @@ CivicSync is a real-time, AI-powered emergency response coordination platform de
 
 ```mermaid
 graph TD
-    A["Admin Command Dashboard<br/>(TanStack Start + React)"] -->|REST API / WebSocket| B["Rust / Axum API Layer<br/>(Ingestion & State Management)"]
-    B -->|Batch Evaluation & Delta Triggers| C["Rig AI Orchestrator<br/>(Structured Tool Calls)"]
-    C -->|Dispatch Decisions| B
-    B -->|Read / Write| D["PostgreSQL + PostGIS<br/>(Persistent Storage)"]
-    B -->|Cache & Pub/Sub| E["Redis<br/>(Geospatial Index & State Cache)"]
-    B -->|Metrics & Traces| F["Prometheus + Grafana<br/>(Observability)"]
+    A["Admin Command Dashboard<br/>(TanStack Start + React + Leaflet)"] -->|REST + WebSocket| B["Rust / Axum API"]
+    B -->|30s plan · Δ triggers| C["Rig AI Orchestrator<br/>(structured tool calls)"]
+    C -->|envelope + justification| B
+    B -->|read / write| D[(PostgreSQL)]
+    B -->|nearest-center cache| E[(Redis)]
+    B -->|prometheus / otel| F["Prometheus + OpenTelemetry"]
 
     style A fill:#3b82f6,stroke:#1e40af,color:#fff
     style B fill:#f97316,stroke:#c2410c,color:#fff
@@ -31,168 +44,171 @@ graph TD
 
 ---
 
-## Tech Stack
-
-| Layer            | Technology                              |
-| ---------------- | --------------------------------------- |
-| **API**          | Rust + Axum                             |
-| **AI Engine**    | Rig (Structured Tool Calling)           |
-| **Frontend**     | TanStack Start + React + TailwindCSS    |
-| **Database**     | PostgreSQL + PostGIS                    |
-| **Cache**        | Redis (Pub/Sub & Geospatial Indexing)   |
-| **Maps**         | Leaflet + OpenStreetMap                 |
-| **Observability**| Prometheus + Grafana + OpenTelemetry    |
-
----
-
-## Features
-
-- **Real-Time Incident Tracking** — Continuous stream ingestion with severity-based prioritization (1–5 scale), casualty monitoring, and delta-trigger re-evaluation.
-- **Haversine Geospatial Routing** — Computes great-circle distances from incident coordinates to all 8 command centers for optimal dispatch.
-- **Multi-Center Dispatch** — Primary allocation from the nearest hub with automatic fallback to Dhaka Core Center when local assets face a deficit.
-- **AI Orchestration** — Rig AI evaluates batched incidents every 30 seconds, emitting structured JSON tool call payloads with full justification.
-- **Simulation Engine** — Built-in disaster generator with admin controls to pause, resume, and manually inject custom crisis incidents.
-- **Human-in-the-Loop** — Operators can approve AI recommendations or enable Autopilot Mode for autonomous dispatch.
-- **WebSocket Sync** — Real-time state synchronization with 60-second conditional flush to prevent unnecessary UI re-renders.
-
----
-
-## Local Setup
-
-### Prerequisites
-
-- [Rust](https://rustup.rs/) (latest stable)
-- [Bun](https://bun.sh/) (v1.0+)
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-
-### Steps
+## Run it in 60 seconds (in-memory mode — no Docker, no DB, no AI key)
 
 ```bash
-# 1. Clone the repository
-git clone <repository-url>
-cd Civic-Sync
+# 1. clone + start the API (auto-selects in-memory mode if DATABASE_URL is unset)
+git clone <repo> && cd Civic-Sync
+cd api && cargo run                          # → 0.0.0.0:8080
 
-# 2. Set up environment variables
-cp .env.example .env
-# Edit .env with your database credentials and API keys
+# 2. in a second terminal — start the dashboard
+cd web && bun install && bun run dev        # → http://localhost:3000
 
-# 3. Start infrastructure (PostgreSQL, Redis, MinIO)
-docker compose up -d
-
-# 4. Start the API server (port 8080)
-cd api && cargo run
-
-# 5. Start the frontend dev server (port 3000)
-cd web && bun install && bun run dev
+# 3. inject a crisis from another terminal and watch the grid light up
+curl -X POST http://localhost:8080/api/v1/admin/simulation/inject \
+  -H "x-role: admin" -H "content-type: application/json" \
+  -d '{"title":"Flash flood","severity_level":5,"affected_people":1200,"casualty_count":35,"latitude":24.8949,"longitude":91.8687}'
 ```
 
-### Makefile Commands
+Within 30 s the engine plans; within 60 s the dashboard reflects the new state. Repeat with the simulator paused, request recommendations explicitly:
 
-| Command              | Description                                     |
-| -------------------- | ----------------------------------------------- |
-| `make api-run`       | Build and run the Rust backend API (port 8080)  |
-| `make frontend`      | Run the TanStack React dev server (port 3000)   |
-| `make docker-up`     | Spin up Postgres, Redis, and MinIO containers   |
-| `make docker-down`   | Stop Docker Compose containers                  |
-| `make docker-logs`   | View real-time logs from Docker Compose         |
+```bash
+curl -X POST http://localhost:8080/api/v1/dispatch/recommendations \
+  -H "x-role: admin" | jq
+```
+
+The response carries the structured tool-call envelope `dispatch_multi_center_response` plus the explainable priority queue (`priority_score` + per-incident `reasons`).
 
 ---
 
-## API Endpoints
+## Self-verification — run `./scripts/verify-all.sh`
 
-All API routes are prefixed with `/api`.
+The repo ships its own gate. **One command** runs all four layers end-to-end:
 
-### Health & Observability
+| # | Layer | What it proves |
+|---|-------|----------------|
+| 1 | **Static** (`cargo check` + `clippy -D warnings` + `fmt --check`) | Type-safe, lint-clean, formatting clean |
+| 2 | **Live API smoke** (`scripts/smoke.sh`) | 12 stages: RBAC, incident CRUD + Δ-triggers, full dispatch cycle, simulation, metrics |
+| 3 | **Frontend body contract** (`scripts/verify-payloads.sh`) | Replays every `fetch()` body the React components build; asserts the backend accepts each one |
+| 4 | **Backend shape contract** (`web/tests/payloads.test.ts`) | The Zod schemas in `web/src/store/adminStore.ts` parse live API responses — drift fails the test, not the UI |
 
-| Method | Endpoint            | Description                  |
-| ------ | ------------------- | ---------------------------- |
-| GET    | `/health/live`      | Liveness probe               |
-| GET    | `/health/ready`     | Readiness probe              |
-| GET    | `/metrics`          | Prometheus metrics           |
+```
+$ ./scripts/verify-all.sh
+==> 1/4 backend static checks   ✓ cargo check, clippy, fmt-check all green
+==> 2/4 backend live smoke      ✓ 12 stages
+==> 3/4 frontend payload contract ✓ 18 body shapes accepted
+==> 4/4 frontend zod contract   ✓ 8 schemas accept live API responses
 
-### Command Centers
+=============================================
+  ALL 4 STAGES PASS — submission-ready
+=============================================
+```
 
-| Method | Endpoint              | Description                |
-| ------ | --------------------- | -------------------------- |
-| GET    | `/api/v1/centers`     | List all command centers   |
-| GET    | `/api/v1/centers/:id` | Get a specific center      |
-| DELETE | `/api/v1/centers/:id` | Delete a center            |
+Layers 3 and 4 are **contract tests**: any future rename in the API, drop in the response model, or typo in a frontend fetch fails before merge.
+
+---
+
+## Anatomy of a dispatch decision
+
+```mermaid
+sequenceDiagram
+    participant Op as Operator / Sensor
+    participant API
+    participant Engine as Priority Engine (30s tick)
+    participant DB
+
+    Op->>API: POST /incidents  (or simulator tick, or Δ-trigger)
+    API->>DB: INSERT + fire §5B triggers if severity=5 or casualties≥10
+    Note over Engine: every 30s (or instant on Δ-trigger)
+    Engine->>DB: load all ACTIVE incidents + all deployable assets
+    Engine->>Engine: sort by priority_score = severity·10 + casualties·0.5 + affected·0.02 + time
+    loop each incident, max 3 assets
+        Engine->>Engine: layer 1 = primary-hub assets, sorted by Haversine
+        Engine->>Engine: layer 2 = Dhaka-Core fallback
+        Engine->>Engine: layer 3 = other regional hubs
+    end
+    Engine->>API: emit dispatch_multi_center_response envelope + justification
+    API->>Op: (Autopilot on) commit / (Autopilot off) await approval
+
+    Op->>API: POST /dispatch/apply {envelope}
+    API->>DB: UPDATE resources SET status='EN_ROUTE', assigned_incident_id=$incident WHERE id=$id AND assigned_incident_id IS NULL
+    API->>DB: UPDATE incidents SET status='DISPATCHED'
+    Note over DB: the IS NULL guard makes double-allocation physically impossible
+```
+
+- **Priority score** (`api/src/features/incidents.rs::priority_score`) combines severity 1–5, casualty load, affected population, and time-on-grid so a stale crisis can never starve behind a fresh one.
+- **Multi-center dispatch** (`api/src/features/dispatch.rs::heuristic_dispatch`) layers primary hub → Dhaka Core national fallback → regional hubs, each layer sorted by Haversine distance.
+- **Conflict prevention** is enforced **twice**: once in planning (claimed-set) and once at commit (`assigned_incident_id IS NULL` row-level guard). The row guard runs inside a `FOR UPDATE` transaction.
+- **Every dispatch carries a human-readable justification** built from the same arithmetic that made the decision — reviewable with or without an LLM.
+
+---
+
+## Tech stack
+
+| Layer | Choice | Why |
+|-------|--------|-----|
+| **API** | Rust + Axum 0.8 + `tokio` | Memory-safe, low-latency, single static binary |
+| **DB** | PostgreSQL via `sqlx` | JSON columns for status enums, runtime migrations, prepared queries |
+| **AI orchestrator** | `rig-core` 0.39 | Structured tool calling, 7 provider adapters, schema-validated envelopes |
+| **Cache** | Redis (optional) | 60 s nearest-center quantised-key cache |
+| **Frontend** | TanStack Start + React + Vite + Tailwind 4 | Loader-based data fetch, type-safe routes |
+| **Maps** | Leaflet + OpenStreetMap | No API key, works offline-friendly |
+| **Observability** | `prometheus` + `opentelemetry` | HTTP/dispatch/semaphore/flush/simulation counters + traces |
+| **AuthZ** | Custom `axum` middleware | `x-role: admin\|dispatcher` header on every mutation |
+
+---
+
+## API surface (all routes prefixed `/api`)
+
+### Command centers
+| M | Endpoint | Notes |
+|---|----------|-------|
+| GET | `/v1/centers`, `/v1/command-centers` *(alias)* | 8 hubs seeded; only `/centers/:id` has DELETE (seeded hubs are protected) |
 
 ### Incidents
-
-| Method | Endpoint                | Description              |
-| ------ | ----------------------- | ------------------------ |
-| GET    | `/api/v1/incidents`     | List all incidents       |
-| POST   | `/api/v1/incidents`     | Create a new incident    |
-| GET    | `/api/v1/incidents/:id` | Get incident details     |
-| PATCH  | `/api/v1/incidents/:id` | Update an incident       |
-| DELETE | `/api/v1/incidents/:id` | Delete an incident       |
+| M | Endpoint | Notes |
+|---|----------|-------|
+| GET POST | `/v1/incidents` | Filters: `status`, `severity_level`, `min_casualties`, `limit`, `offset` |
+| GET PATCH DELETE | `/v1/incidents/:id` | PATCH is partial; Δ triggers fire on `casualty_count`+`severity` |
 
 ### Resources
+| M | Endpoint | Notes |
+|---|----------|-------|
+| GET POST | `/v1/resources` | Filters: `status`, `resource_type`, `owner_center_id`, `assigned_incident_id` |
+| PATCH | `/v1/resources/:id/status` | STUCK fires re-route trigger |
+| DELETE | `/v1/resources/:id` | |
 
-| Method | Endpoint                        | Description               |
-| ------ | ------------------------------- | ------------------------- |
-| GET    | `/api/v1/resources`             | List all resources        |
-| POST   | `/api/v1/resources`             | Create a new resource     |
-| PATCH  | `/api/v1/resources/:id/status`  | Update resource status    |
-| DELETE | `/api/v1/resources/:id`         | Delete a resource         |
+### Dispatch (AI orchestrator)
+| M | Endpoint | Notes |
+|---|----------|-------|
+| POST | `/v1/dispatch/recommendations` | Envelope + priority queue; read-only |
+| POST | `/v1/dispatch/apply` | Commit one envelope; transactional, idempotent |
+| POST | `/v1/dispatch/smoke` | LLM pipeline diagnostic (provider/model/error/patches) |
 
-### Dispatch (AI Orchestrator)
+### Simulation controls
+| M | Endpoint | Notes |
+|---|----------|-------|
+| GET POST | `/v1/admin/simulation[/{pause,resume,inject}]` | Status + pause + resume + manual inject |
 
-| Method | Endpoint                            | Description                          |
-| ------ | ----------------------------------- | ------------------------------------ |
-| POST   | `/api/v1/dispatch/recommendations`  | Get AI dispatch recommendations      |
-| POST   | `/api/v1/dispatch/apply`            | Apply a dispatch decision            |
-| POST   | `/api/v1/dispatch/smoke`            | Smoke test dispatch pipeline         |
+### Real-time
+| M | Endpoint | Notes |
+|---|----------|-------|
+| GET | `/v1/sync/ws` | WebSocket — `{type:"hello"}` then `{type:"flush"}` frames only when rows change |
 
-### Simulation Controls
-
-| Method | Endpoint                            | Description                          |
-| ------ | ----------------------------------- | ------------------------------------ |
-| GET    | `/api/v1/admin/simulation`          | Get simulation status                |
-| POST   | `/api/v1/admin/simulation/pause`    | Pause the disaster generator         |
-| POST   | `/api/v1/admin/simulation/resume`   | Resume the disaster generator        |
-| POST   | `/api/v1/admin/simulation/inject`   | Manually inject a crisis incident    |
-
-### WebSocket
-
-| Method | Endpoint              | Description                   |
-| ------ | --------------------- | ----------------------------- |
-| GET    | `/api/v1/sync/ws`     | Real-time state sync channel  |
+> All mutations require `x-role: admin` *(or `dispatcher`)*. RBAC is enforced by middleware on every POST/PATCH/DELETE.
 
 ---
 
-## Database Schema
-
-PostgreSQL with PostGIS extensions. All tables enforce `created_at`, `updated_at`, and `server_synced_at` timestamps.
-
-| Table                  | Description                                                    |
-| ---------------------- | -------------------------------------------------------------- |
-| `command_centers`      | 8 divisional hubs with geographic coordinates (PostGIS Point)  |
-| `incidents`            | Crisis events with severity (1–5), location, casualty counts   |
-| `helper_teams`         | Human response teams with member counts and deployment status  |
-| `resources`            | Vehicles & supplies (ambulances, boats, helicopters, food)     |
-| `assistance_requests`  | Resource assistance requests linked to stuck/failed resources  |
-| `helper_allocations`   | Junction table mapping teams to incidents or assistance tasks  |
-
----
-
-## Project Structure
+## Project layout
 
 ```
 Civic-Sync/
-├── api/                 # Rust/Axum backend API
-├── web/                 # TanStack Start + React frontend
-├── scripts/             # Utility scripts
-├── docker-compose.yml   # Infrastructure stack
-├── Makefile             # Developer commands
-└── .env.example         # Environment template
+├── api/                 # Rust/Axum backend (8 feature modules)
+│   ├── src/features/    # centers · incidents · resources · dispatch · orchestrator
+│   │                    # simulation · triggers · flush · sync · health
+│   └── migrations/      # 8 SQL files, applied automatically on boot
+├── web/                 # TanStack Start + React + Tailwind 4
+│   ├── src/routes/      # / · /admin · /incidents/:id · /resources/:id · /centers/:id
+│   ├── src/store/       # Zustand admin store + Zod schemas mirroring Rust structs
+│   └── tests/           # vitest — zod contract tests
+├── scripts/             # verify-all.sh · smoke.sh · verify-payloads.sh
+├── docker-compose.yml   # Postgres + Redis + MinIO
+├── Makefile             # api-run · frontend · docker-up · docker-down · docker-logs
+└── .env.example         # PORT · DATABASE_URL · REDIS_URL · S3_* · AI_{PROVIDER,MODEL,API_KEY}
+                                              └─ all-or-nothing: if any one is set, all three required
 ```
 
-See detailed documentation for each component:
-
-- [**API README**](api/README.md) — Backend architecture, handlers, and AI orchestration
-- [**Web README**](web/README.md) — Frontend dashboard, pages, and UI components
+See **[`api/README.md`](api/README.md)** for the engine internals and **[`web/README.md`](web/README.md)** for the dashboard pages.
 
 ---
 

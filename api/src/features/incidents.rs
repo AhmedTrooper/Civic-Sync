@@ -488,11 +488,17 @@ impl ListIncidentsQuery {
     }
 }
 
+/// Dynamic prioritization score (data.md §5A): severity 1–5 is the base
+/// weight, casualty load and affected population amplify it, and
+/// time-on-grid escalates stale crises so an unattended incident is never
+/// starved forever. Deterministic and explainable via [`priority_reasons`].
 pub fn priority_score(incident: &Incident) -> f64 {
     let severity = f64::from(incident.severity_level);
     let casualties = f64::from(incident.casualty_count);
     let affected = f64::from(incident.affected_people);
-    (severity * 10.0) + (casualties * 0.5) + (affected * 0.02)
+    let age_minutes = (Utc::now() - incident.created_at).num_seconds().max(0) as f64 / 60.0;
+    let time_factor = (age_minutes * 0.05).min(10.0);
+    (severity * 10.0) + (casualties * 0.5) + (affected * 0.02) + time_factor
 }
 
 pub fn priority_reasons(incident: &Incident) -> Vec<String> {
@@ -512,6 +518,13 @@ pub fn priority_reasons(incident: &Incident) -> Vec<String> {
         reasons.push(format!(
             "{} people affected, expand coordination scope",
             incident.affected_people
+        ));
+    }
+    let age_minutes = (Utc::now() - incident.created_at).num_seconds().max(0) / 60;
+    if age_minutes >= 1 {
+        reasons.push(format!(
+            "active for {} min without resolution, escalating time sensitivity",
+            age_minutes
         ));
     }
     reasons.push(format!(
