@@ -11,11 +11,11 @@ const config = defineConfig({
 	resolve: { tsconfigPaths: true },
 	plugins: [
 		devtools(),
-		nitro({ 
+		nitro({
 			rollupConfig: { external: [/^@sentry\//] },
 			routeRules: {
-				'/api/**': { proxy: 'http://127.0.0.1:8080/api/**' }
-			}
+				"/api/**": { proxy: "http://127.0.0.1:8080/api/**" },
+			},
 		}),
 		tailwindcss(),
 		tanstackStart(),
@@ -23,12 +23,12 @@ const config = defineConfig({
 	],
 	server: {
 		proxy: {
-			'/api': {
-				target: 'http://127.0.0.1:8080',
+			"/api": {
+				target: "http://127.0.0.1:8080",
 				changeOrigin: true,
-			}
-		}
-	}
+			},
+		},
+	},
 });
 
 export default config;

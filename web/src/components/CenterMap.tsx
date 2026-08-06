@@ -1,18 +1,17 @@
-import {
-	MapContainer,
-	TileLayer,
-	Marker,
-	Popup,
-	Circle,
-	Polyline,
-} from "react-leaflet";
 import React from "react";
+import {
+	Circle,
+	MapContainer,
+	Marker,
+	Polyline,
+	Popup,
+	TileLayer,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-
+import iconUrl from "leaflet/dist/images/marker-icon.png?url";
 // Fix default Leaflet icon paths for bundlers
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png?url";
-import iconUrl from "leaflet/dist/images/marker-icon.png?url";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png?url";
 
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
@@ -121,10 +120,7 @@ export default function CenterMap({
 			{/* Resource markers + connection lines to center */}
 			{resources.map((res) => (
 				<React.Fragment key={res.id}>
-					<Marker
-						position={[res.latitude, res.longitude]}
-						icon={resourceIcon}
-					>
+					<Marker position={[res.latitude, res.longitude]} icon={resourceIcon}>
 						<Popup>
 							<div className="font-bold text-emerald-600">
 								{res.unit_identifier}
@@ -160,10 +156,7 @@ export default function CenterMap({
 			{/* Incident markers + connection lines to center */}
 			{incidents.map((inc) => (
 				<React.Fragment key={inc.id}>
-					<Marker
-						position={[inc.latitude, inc.longitude]}
-						icon={incidentIcon}
-					>
+					<Marker position={[inc.latitude, inc.longitude]} icon={incidentIcon}>
 						<Popup>
 							<div className="font-bold text-rose-600">{inc.title}</div>
 							<div className="text-xs font-semibold text-slate-600">

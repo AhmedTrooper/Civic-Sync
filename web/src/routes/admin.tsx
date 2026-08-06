@@ -8,8 +8,6 @@ import { Database, Flame, MapPin, Pause, Play, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BulkQueuePanel } from "#/components/admin/BulkQueuePanel.tsx";
 import { ConnectionStatus } from "#/components/admin/ConnectionStatus.tsx";
-
-import { API_BASE } from "#/lib/apiClient.ts";
 import { useAdminStore } from "#/store/adminStore.ts";
 
 const TABS = [
@@ -21,7 +19,6 @@ const TABS = [
 	{ to: "/admin/assets" as const, label: "Grid Assets", icon: Truck },
 	{ to: "/admin/centers" as const, label: "Centers", icon: MapPin },
 ];
-
 
 export const Route = createFileRoute("/admin")({
 	component: AdminLayout,

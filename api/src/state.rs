@@ -7,8 +7,12 @@ use uuid::Uuid;
 use crate::{
     config::Config,
     features::{
-        centers::Center, flush::FlushMark, incidents::Incident, orchestrator::Orchestrator,
-        resources::Resource, triggers::TriggerEvent,
+        centers::Center,
+        flush::FlushMark,
+        incidents::Incident,
+        orchestrator::{Orchestrator, SemaphoreGate},
+        resources::Resource,
+        triggers::TriggerEvent,
     },
 };
 
@@ -25,6 +29,11 @@ pub struct AppState {
     /// dispatch handler runs the deterministic heuristic on every call and
     /// the triggers driver operates in heuristic-only mode.
     pub orchestrator: Arc<Option<Orchestrator>>,
+    /// Shared §5B semaphore gate for AI calls outside the dispatch path
+    /// (currently the AI-triage endpoint). Stored on `AppState` so the
+    /// 3-permits/30s window is shared across all AI consumers — the AI
+    /// budget is a single grid-wide resource, not per-endpoint.
+    pub ai_gate: Arc<SemaphoreGate>,
     /// Sender for delta-trigger events (data.md §5B). Resource status
     /// updates push `TriggerEvent::ResourceStuck` etc. here, and the
     /// triggers driver drains the receiver on its 30-second ticker.
@@ -58,6 +67,11 @@ impl AppState {
             .map(|center| (center.id, center))
             .collect::<HashMap<_, _>>();
         let orchestrator = Arc::new(Orchestrator::from_config(&config.ai).ok().flatten());
+        // Share the §5B gate with any AI consumer that wants it. The
+        // orchestrator owns its own internal gate; this is a *separate*
+        // shared gate so the dispatch path (envelope justification) and
+        // the AI-triage path compete on a single 3-permits/30s budget.
+        let ai_gate = Arc::new(SemaphoreGate::new());
         let (triggers_tx, _triggers_rx) = crate::features::triggers::channel();
         let (flush_tx, _flush_rx) = mpsc::channel(crate::features::flush::MARK_CHANNEL_CAPACITY);
         let (flush_notice_tx, _) = broadcast::channel(64);
@@ -79,6 +93,7 @@ impl AppState {
             resources: Arc::new(RwLock::new(HashMap::new())),
             centers: Arc::new(RwLock::new(centers)),
             orchestrator,
+            ai_gate,
             triggers_tx,
             flush_tx,
             flush_notice_tx,

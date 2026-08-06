@@ -9,9 +9,8 @@ import {
 	Truck,
 	Users,
 } from "lucide-react";
-import { API_BASE } from "#/lib/apiClient.ts";
-import { CenterSchema, IncidentSchema, ResourceSchema } from "#/store/adminStore.ts";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { API_BASE } from "#/lib/apiClient.ts";
 
 const DashboardMap = lazy(() => import("#/components/DashboardMap"));
 

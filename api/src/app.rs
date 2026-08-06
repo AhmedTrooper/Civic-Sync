@@ -15,7 +15,7 @@ use tower_http::{
 use crate::{
     config::Config,
     features::{
-        centers, dispatch, health,
+        ai_triage, centers, dispatch, health,
         incidents::{self},
         resources::{self},
         simulation, sync,
@@ -73,6 +73,9 @@ pub fn router_with_state_and_config(state: AppState, config: &Config) -> Router 
         .route("/v1/dispatch/recommendations", post(dispatch::recommend))
         .route("/v1/dispatch/apply", post(dispatch::apply))
         .route("/v1/dispatch/smoke", post(dispatch::smoke))
+        // AI severity re-classification + resource-kind predictor (data.md §7).
+        // Read-only advisory: the deterministic engine still owns allocations.
+        .route("/v1/ai/triage", post(ai_triage::triage))
         .route("/v1/admin/simulation", get(simulation::status))
         .route("/v1/admin/simulation/pause", post(simulation::pause))
         .route("/v1/admin/simulation/resume", post(simulation::resume))

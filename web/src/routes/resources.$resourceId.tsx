@@ -1,20 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, lazy, Suspense } from "react";
-import { API_BASE } from "#/lib/apiClient.ts";
 import {
-	ArrowLeft,
-	MapPin,
-	Truck,
-	AlertTriangle,
-	Loader2,
-	Package,
-	Navigation,
-	Building2,
 	AlertCircle,
+	AlertTriangle,
+	ArrowLeft,
+	Building2,
 	CheckCircle2,
+	Loader2,
+	MapPin,
+	Navigation,
+	Package,
 	RefreshCw,
 	Trash2,
+	Truck,
 } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { API_BASE } from "#/lib/apiClient.ts";
 
 const ResourceMap = lazy(() => import("#/components/ResourceMap"));
 
@@ -114,9 +114,7 @@ function ResourceDetails() {
 	useEffect(() => {
 		const interval = setInterval(async () => {
 			try {
-				const res = await fetch(
-					`${API_BASE}/api/v1/resources/${resourceId}`,
-				);
+				const res = await fetch(`${API_BASE}/api/v1/resources/${resourceId}`);
 				if (res.ok) {
 					const resource: Resource = await res.json();
 					const [centerRes, incidentRes] = await Promise.all([
@@ -141,6 +139,9 @@ function ResourceDetails() {
 		}, 3000);
 		return () => clearInterval(interval);
 	}, [resourceId]);
+
+	const navigate = useNavigate();
+	const [deleting, setDeleting] = useState(false);
 
 	if (!data.resource) {
 		return (
@@ -200,20 +201,14 @@ function ResourceDetails() {
 		}
 	};
 
-	const navigate = useNavigate();
-	const [deleting, setDeleting] = useState(false);
-
 	const handleDeleteResource = async () => {
 		if (!confirm("Are you sure you want to delete this resource?")) return;
 		setDeleting(true);
 		try {
-			const res = await fetch(
-				`${API_BASE}/api/v1/resources/${resource.id}`,
-				{
-					method: "DELETE",
-					headers: { "x-role": "admin" },
-				},
-			);
+			const res = await fetch(`${API_BASE}/api/v1/resources/${resource.id}`, {
+				method: "DELETE",
+				headers: { "x-role": "admin" },
+			});
 			if (res.ok || res.status === 204) {
 				navigate({ to: "/" });
 			}
@@ -393,10 +388,14 @@ function ResourceDetails() {
 
 							<form onSubmit={handleStatusUpdate} className="space-y-3">
 								<div>
-									<label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+									<label
+										htmlFor="resource-status-select"
+										className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1"
+									>
 										Status
 									</label>
 									<select
+										id="resource-status-select"
 										value={selectedStatus}
 										onChange={(e) => setSelectedStatus(e.target.value)}
 										className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
@@ -409,10 +408,14 @@ function ResourceDetails() {
 								</div>
 
 								<div>
-									<label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+									<label
+										htmlFor="resource-capacity-input"
+										className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1"
+									>
 										Current Capacity
 									</label>
 									<input
+										id="resource-capacity-input"
 										type="number"
 										min={0}
 										max={resource.total_capacity}

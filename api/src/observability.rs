@@ -74,6 +74,20 @@ fn register_descriptions() {
         "civic_sync_simulation_paused",
         "Whether the simulator is currently paused (1 = paused)"
     );
+    // --- AI triage observability (added in the 1-hour hardening pass) ---
+    metrics::describe_counter!(
+        "civic_sync_ai_triage_total",
+        "AI triage endpoint calls broken out by outcome (success|fallback|throttled|cache_hit|no_orchestrator)"
+    );
+    metrics::describe_histogram!(
+        "civic_sync_ai_triage_latency_ms",
+        Unit::Milliseconds,
+        "Latency of successful AI triage calls (excludes cache hits and heuristic fallbacks)"
+    );
+    metrics::describe_counter!(
+        "civic_sync_redis_cache_operations_total",
+        "Redis cache operations broken out by op (get|set) and result (hit|miss|error)"
+    );
 }
 
 /// Tower middleware: count every request and observe its duration.
@@ -157,6 +171,32 @@ pub fn record_simulation_generated() {
 
 pub fn set_simulation_paused(paused: bool) {
     metrics::gauge!("civic_sync_simulation_paused").set(if paused { 1.0 } else { 0.0 });
+}
+
+/// Convenience: emit one AI triage observation. `outcome` is one of
+/// `success | fallback | throttled | cache_hit | no_orchestrator`.
+/// `latency_ms` is only recorded on the success path; it is ignored for
+/// every other outcome.
+pub fn record_ai_triage(outcome: &'static str, latency_ms: u64) {
+    metrics::counter!(
+        "civic_sync_ai_triage_total",
+        "outcome" => outcome,
+    )
+    .increment(1);
+    if outcome == "success" && latency_ms > 0 {
+        metrics::histogram!("civic_sync_ai_triage_latency_ms").record(latency_ms as f64);
+    }
+}
+
+/// Convenience: emit one Redis cache operation observation. `op` is
+/// `get | set`, `result` is `hit | miss | error`.
+pub fn record_cache_op(op: &'static str, result: &'static str) {
+    metrics::counter!(
+        "civic_sync_redis_cache_operations_total",
+        "op" => op,
+        "result" => result,
+    )
+    .increment(1);
 }
 
 /// Render the current metrics snapshot in Prometheus text format.

@@ -62,7 +62,11 @@ export function IncidentsTable({ loading }: IncidentsTableProps) {
 	console.log("[IncidentsTable] Rendered, loading =", loading);
 	const { incidents, centers, incidentFilters, setIncidentFilters } =
 		useAdminStore();
-	console.log("[IncidentsTable] Store state:", { incidentsCount: incidents.length, centersCount: centers.length, filters: incidentFilters });
+	console.log("[IncidentsTable] Store state:", {
+		incidentsCount: incidents.length,
+		centersCount: centers.length,
+		filters: incidentFilters,
+	});
 	const [search, setSearch] = useState(incidentFilters.search);
 	const debouncedSearch = useDebouncedValue(search, 200);
 

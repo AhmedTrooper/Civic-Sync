@@ -1,19 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, lazy, Suspense } from "react";
-import { API_BASE } from "#/lib/apiClient.ts";
 import {
-	ArrowLeft,
-	MapPin,
-	Shield,
-	Truck,
-	AlertTriangle,
-	Loader2,
-	Radio,
 	Activity,
-	Users,
 	AlertCircle,
+	AlertTriangle,
+	ArrowLeft,
+	Loader2,
+	MapPin,
+	Radio,
+	Shield,
 	Trash2,
+	Truck,
+	Users,
 } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { API_BASE } from "#/lib/apiClient.ts";
 
 const LeafletMap = lazy(() => import("#/components/CenterMap"));
 
@@ -63,9 +63,9 @@ export const Route = createFileRoute("/centers/$centerId")({
 	loader: async ({ params }): Promise<LoaderData> => {
 		try {
 			const [centerRes, resourcesRes, incidentsRes] = await Promise.all([
-				fetch(
-					`${API_BASE}/api/v1/command-centers/${params.centerId}`,
-				).catch(() => null),
+				fetch(`${API_BASE}/api/v1/command-centers/${params.centerId}`).catch(
+					() => null,
+				),
 				fetch(
 					`${API_BASE}/api/v1/resources?owner_center_id=${params.centerId}`,
 				).catch(() => null),
@@ -134,9 +134,7 @@ function CenterDetails() {
 			try {
 				const [centerRes, resourcesRes, incidentsRes] = await Promise.all([
 					fetch(`${API_BASE}/api/v1/command-centers/${centerId}`),
-					fetch(
-						`${API_BASE}/api/v1/resources?owner_center_id=${centerId}`,
-					),
+					fetch(`${API_BASE}/api/v1/resources?owner_center_id=${centerId}`),
 					fetch(`${API_BASE}/api/v1/incidents`),
 				]);
 				if (centerRes.ok) {
@@ -162,6 +160,9 @@ function CenterDetails() {
 		return () => clearInterval(interval);
 	}, [centerId]);
 
+	const navigate = useNavigate();
+	const [deleting, setDeleting] = useState(false);
+
 	if (!data.center) {
 		return (
 			<div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-10 flex flex-col items-center justify-center gap-4">
@@ -186,21 +187,15 @@ function CenterDetails() {
 
 	const { center, resources, incidents } = data;
 
-	const navigate = useNavigate();
-	const [deleting, setDeleting] = useState(false);
-
 	const handleDeleteCenter = async () => {
 		if (!confirm("Are you sure you want to delete this command center?"))
 			return;
 		setDeleting(true);
 		try {
-			const res = await fetch(
-				`${API_BASE}/api/v1/centers/${centerId}`,
-				{
-					method: "DELETE",
-					headers: { "x-role": "admin" },
-				},
-			);
+			const res = await fetch(`${API_BASE}/api/v1/centers/${centerId}`, {
+				method: "DELETE",
+				headers: { "x-role": "admin" },
+			});
 			if (res.ok || res.status === 204) {
 				navigate({ to: "/" });
 			}

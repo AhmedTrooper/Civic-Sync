@@ -9,8 +9,7 @@
  */
 
 export const API_BASE: string =
-	(import.meta.env.VITE_API_BASE as string | undefined) ??
-	"";
+	(import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -56,7 +55,11 @@ export async function apiFetch<T = unknown>(
 	}
 
 	const targetUrl = buildUrl(path);
-	console.log(`[apiClient] -> ${method} ${targetUrl}`, { auth, role, headers: finalHeaders });
+	console.log(`[apiClient] -> ${method} ${targetUrl}`, {
+		auth,
+		role,
+		headers: finalHeaders,
+	});
 
 	const res = await fetch(targetUrl, {
 		...rest,
@@ -64,7 +67,9 @@ export async function apiFetch<T = unknown>(
 		headers: finalHeaders,
 	});
 
-	console.log(`[apiClient] <- ${method} ${targetUrl} [${res.status} ${res.statusText}]`);
+	console.log(
+		`[apiClient] <- ${method} ${targetUrl} [${res.status} ${res.statusText}]`,
+	);
 
 	if (res.status === 204) return null;
 
@@ -78,7 +83,11 @@ export async function apiFetch<T = unknown>(
 				: null) ?? `${res.status} ${res.statusText}`;
 		const code =
 			isRecord(data) && typeof data.code === "string" ? data.code : null;
-		console.error(`[apiClient] Error on ${path}:`, { message, code, status: res.status });
+		console.error(`[apiClient] Error on ${path}:`, {
+			message,
+			code,
+			status: res.status,
+		});
 		throw new ApiError(message, res.status, code);
 	}
 

@@ -168,6 +168,30 @@ assert_status "$status" "201" "POST /api/v1/admin/simulation/inject"
 echo "==> 12. Metrics endpoint"
 status=$(get "/metrics" "$TMP/last.body")
 assert_status "$status" "200" "GET /metrics"
+grep -q 'civic_sync_ai_triage_total' "$TMP/last.body" \
+    || { echo "FAIL: civic_sync_ai_triage_total missing from /metrics"; exit 1; }
+echo "  ok  civic_sync_ai_triage_total metric exposed"
+
+echo "==> 13. AI triage endpoint (heuristic fallback path)"
+status=$(mutate POST "/api/v1/ai/triage" '{
+  "title": "Smoke test flood",
+  "severity_level": 4,
+  "affected_people": 100,
+  "casualty_count": 5,
+  "latitude": 23.81,
+  "longitude": 90.41
+}')
+assert_status "$status" "200" "POST /api/v1/ai/triage"
+grep -q '"prediction"' "$TMP/last.body" \
+    || { echo "FAIL: triage response missing prediction"; exit 1; }
+grep -q '"mode":"heuristic"' "$TMP/last.body" \
+    || { echo "FAIL: expected heuristic mode without AI env vars"; exit 1; }
+echo "  ok  triage returns full payload (heuristic mode)"
+status=$(curl -s -o "$TMP/last.body" -w "%{http_code}" -X POST \
+    -H "content-type: application/json" \
+    -d '{"title":"rbac probe","severity_level":1,"affected_people":1,"casualty_count":0,"latitude":23.8,"longitude":90.4}' \
+    "$API/api/v1/ai/triage")
+assert_status "$status" "403" "POST /api/v1/ai/triage without x-role is forbidden"
 
 echo
 echo "==========================================="

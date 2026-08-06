@@ -1,18 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, lazy, Suspense } from "react";
-import { API_BASE } from "#/lib/apiClient.ts";
 import {
-	ArrowLeft,
 	AlertCircle,
-	MapPin,
-	Users,
-	Activity,
-	Truck,
 	AlertTriangle,
+	ArrowLeft,
 	Clock,
 	Loader2,
+	MapPin,
 	Trash2,
+	Truck,
+	Users,
 } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { API_BASE } from "#/lib/apiClient.ts";
 
 const LeafletMap = lazy(() => import("#/components/IncidentMap"));
 
@@ -62,9 +61,9 @@ export const Route = createFileRoute("/incidents/$incidentId")({
 	loader: async ({ params }): Promise<LoaderData> => {
 		try {
 			const [incidentRes, centersRes, resourcesRes] = await Promise.all([
-				fetch(
-					`${API_BASE}/api/v1/incidents/${params.incidentId}`,
-				).catch(() => null),
+				fetch(`${API_BASE}/api/v1/incidents/${params.incidentId}`).catch(
+					() => null,
+				),
 				fetch(`${API_BASE}/api/v1/command-centers`).catch(() => null),
 				fetch(
 					`${API_BASE}/api/v1/resources?assigned_incident_id=${params.incidentId}`,
@@ -172,6 +171,9 @@ function IncidentDetails() {
 		return () => clearInterval(interval);
 	}, [incidentId]);
 
+	const navigate = useNavigate();
+	const [deleting, setDeleting] = useState(false);
+
 	if (!data.incident) {
 		return (
 			<div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-10 flex flex-col items-center justify-center gap-4">
@@ -201,20 +203,14 @@ function IncidentDetails() {
 		statusColors[incident.status] ||
 		"bg-slate-100 text-slate-500 border-slate-300";
 
-	const navigate = useNavigate();
-	const [deleting, setDeleting] = useState(false);
-
 	const handleDelete = async () => {
 		if (!confirm("Are you sure you want to delete this incident?")) return;
 		setDeleting(true);
 		try {
-			const res = await fetch(
-				`${API_BASE}/api/v1/incidents/${incidentId}`,
-				{
-					method: "DELETE",
-					headers: { "x-role": "admin" },
-				},
-			);
+			const res = await fetch(`${API_BASE}/api/v1/incidents/${incidentId}`, {
+				method: "DELETE",
+				headers: { "x-role": "admin" },
+			});
 			if (res.ok || res.status === 204) {
 				navigate({ to: "/" });
 			}

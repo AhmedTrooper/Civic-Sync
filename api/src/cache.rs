@@ -43,21 +43,45 @@ pub async fn nearest_center(
         && let Ok(mut conn) = client.get_multiplexed_async_connection().await
     {
         let cached: redis::RedisResult<String> = conn.get(&key).await;
-        if let Ok(uuid_str) = cached
-            && let Ok(uuid) = Uuid::parse_str(&uuid_str)
-        {
-            return uuid;
+        match cached {
+            Ok(uuid_str) => match Uuid::parse_str(&uuid_str) {
+                Ok(uuid) => {
+                    crate::observability::record_cache_op("get", "hit");
+                    return uuid;
+                }
+                Err(_) => {
+                    crate::observability::record_cache_op("get", "error");
+                }
+            },
+            Err(error) => {
+                tracing::debug!(?error, "redis GET failed; computing locally");
+                crate::observability::record_cache_op("get", "error");
+            }
         }
+    } else if redis.is_some() {
+        crate::observability::record_cache_op("get", "error");
     }
 
+    crate::observability::record_cache_op("get", "miss");
     let answer = compute_nearest_center(centers, latitude, longitude);
 
     if let Some(client) = redis
         && let Ok(mut conn) = client.get_multiplexed_async_connection().await
     {
-        let _: redis::RedisResult<()> = conn
-            .set_ex(&key, answer.to_string(), DISPATCH_TTL_SECS)
-            .await;
+        match conn
+            .set_ex::<_, _, ()>(&key, answer.to_string(), DISPATCH_TTL_SECS)
+            .await
+        {
+            Ok(()) => {
+                crate::observability::record_cache_op("set", "hit");
+            }
+            Err(error) => {
+                tracing::debug!(?error, "redis SETEX failed; computed answer returned");
+                crate::observability::record_cache_op("set", "error");
+            }
+        }
+    } else if redis.is_some() {
+        crate::observability::record_cache_op("set", "error");
     }
 
     answer

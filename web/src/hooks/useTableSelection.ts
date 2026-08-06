@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { BulkItem } from "#/store/bulkQueueStore.ts";
 import { useBulkQueueStore } from "#/store/bulkQueueStore.ts";
 
@@ -60,13 +60,24 @@ export function useTableSelection<TRow>(opts: {
 			}));
 	}, [rows, selected, idOf, labelOf, kind]);
 
-	return useMemo(() => ({
-		selected,
-		isAllSelected,
-		toggle,
-		toggleAll,
-		clear,
-		enqueueSelected,
-		buildDeleteItems,
-	}), [selected, isAllSelected, toggle, toggleAll, clear, enqueueSelected, buildDeleteItems]);
+	return useMemo(
+		() => ({
+			selected,
+			isAllSelected,
+			toggle,
+			toggleAll,
+			clear,
+			enqueueSelected,
+			buildDeleteItems,
+		}),
+		[
+			selected,
+			isAllSelected,
+			toggle,
+			toggleAll,
+			clear,
+			enqueueSelected,
+			buildDeleteItems,
+		],
+	);
 }

@@ -1,17 +1,16 @@
 import {
-	MapContainer,
-	TileLayer,
-	Marker,
-	Popup,
 	Circle,
+	MapContainer,
+	Marker,
 	Polyline,
+	Popup,
+	TileLayer,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-
+import iconUrl from "leaflet/dist/images/marker-icon.png?url";
 // Fix default Leaflet icon paths for bundlers
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png?url";
-import iconUrl from "leaflet/dist/images/marker-icon.png?url";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png?url";
 
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
